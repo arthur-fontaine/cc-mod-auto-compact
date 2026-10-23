@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>spisev review</title>
+<style>
+  :root { --bg: #fbfaf7; --fg: #1d1c1a; --muted: #6b675f; --line: #e2ded5; --accent: #2f5d8a; --pick: #e9f0f7; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #171614; --fg: #ece9e2; --muted: #9c978c; --line: #34312c; --accent: #8db7e0; --pick: #22303d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+  header { display: flex; gap: 16px; align-items: baseline; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header a { color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 80px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-word; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; }
+  section { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  .msg { border-left: 3px solid var(--line); padding: 4px 10px; margin: 6px 0; }
+  .msg.user { border-color: var(--accent); }
+  .msg.new { background: var(--pick); }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+  button { font: inherit; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+  button:hover, button:focus { border-color: var(--accent); outline: none; }
+  button.teacher { background: var(--pick); border-color: var(--accent); }
+  kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  .bar { display: inline-block; height: 6px; background: var(--accent); border-radius: 3px; vertical-align: middle; }
+  textarea { width: 100%; font: inherit; background: transparent; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>spisev review</h1>
+  <span id="mode" class="meta"></span>
+  <a href="/?mode=blind">blind (test)</a>
+  <a href="/?mode=assisted">assisted (train)</a>
+  <span id="progress" class="meta"></span>
+</header>
+<main id="app"><p class="meta">Loading…</p></main>
+<script>
+const mode = new URLSearchParams(location.search).get('mode') === 'assisted' ? 'assisted' : 'blind'
+document.getElementById('mode').textContent = mode === 'blind'
+  ? 'Blind: Mammoth\'s answer appears once you answer.' : 'Assisted: Mammoth\'s answer is shown.'
+let queue = [], index = 0, current = null, note = ''
+
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs)) k === 'class' ? (e.className = v) : e.setAttribute(k, v)
+  for (const k of kids) e.append(k)
+  return e
+}
+
+async function load() {
+  const r = await fetch('/api/queue?mode=' + mode)
+  queue = (await r.json()).queue
+  index = 0
+  show()
+}
+
+async function show() {
+  const app = document.getElementById('app')
+  document.getElementById('progress').textContent = queue.length ? `${index + 1} / ${queue.length}` : ''
+  if (index >= queue.length) { app.replaceChildren(el('p', {}, 'Nothing left to review in this mode.')); return }
+  const r = await fetch(`/api/point?mode=${mode}&id=${queue[index].id}`)
+  current = await r.json()
+  note = ''
+  render(current.teacher)
+}
+
+function render(teacher) {
+  const p = current, app = document.getElementById('app')
+  const tags = [p.split, p.synthetic && 'synthetic splice', p.linked && 'after /clear', p.preceded_by && ('preceded by /' + p.preceded_by)].filter(Boolean)
+  const transcript = el('details', {}, el('summary', {}, 'Raw transcript around the boundary'))
+  for (const m of p.transcript.before) transcript.append(el('div', { class: 'msg ' + m.kind }, el('pre', {}, m.text)))
+  p.transcript.after.forEach((m, i) => transcript.append(el('div', { class: 'msg new ' + m.kind }, el('pre', {}, (i === 0 ? '▶ ' : '') + m.text))))
+  const options = el('div', { class: 'options' })
+  p.categories.forEach((c, i) => {
+    const prob = teacher ? teacher.probabilities[c] : null
+    const b = el('button', { class: teacher && teacher.choice === c ? 'teacher' : '', title: p.criteria[c] },
+      el('kbd', {}, String(i + 1)), ' ', el('b', {}, c), el('br'),
+      el('span', { class: 'meta' }, p.criteria[c]))
+    if (prob !== null) b.append(el('br'), el('span', { class: 'bar', style: `width:${Math.round(prob * 120)}px` }), ' ', (prob * 100).toFixed(1) + '%')
+    b.onclick = () => answer(c)
+    options.append(b)
+  })
+  const noteBox = el('textarea', { rows: '2', placeholder: 'note (n)', id: 'note' })
+  noteBox.oninput = () => { note = noteBox.value }
+  app.replaceChildren(
+    el('p', { class: 'meta' }, p.id + ' · ' + tags.join(' · ')),
+    el('section', {}, el('h2', {}, 'New user message'), el('pre', {}, p.state.latest_user_message)),
+    el('section', {}, el('h2', {}, 'Conversation as the teacher saw it'), el('pre', {}, p.state.conversation)),
+    el('section', {}, transcript),
+    el('section', {}, el('h2', {}, teacher ? 'Mammoth: ' + teacher.choice : 'Your answer'), options,
+      el('p', { class: 'meta' }, 'Keys: 1–5 category · s skip · f summary insufficient · n note · → next')),
+    noteBox,
+  )
+}
+
+async function answer(label) {
+  const r = await fetch('/api/label', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: current.id, mode, label, note }) })
+  const out = await r.json()
+  if (mode === 'blind' && out.teacher) { render(out.teacher); index++; setTimeout(show, 1200); return }
+  index++
+  show()
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') e.target.blur(); return }
+  if (!current) return
+  const n = Number(e.key)
+  if (n >= 1 && n <= current.categories.length) answer(current.categories[n - 1])
+  else if (e.key === 's') answer('skip')
+  else if (e.key === 'f') answer('insufficient')
+  else if (e.key === 'n') { e.preventDefault(); document.getElementById('note').focus() }
+  else if (e.key === 'ArrowRight') { index++; show() }
+})
+load()
+</script>
+</body>
+</html>
