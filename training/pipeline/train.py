@@ -136,6 +136,9 @@ def main():
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--hard-targets", action="store_true", help="Train on Mammoth's pick, one-hot")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--resume", type=Path, help="An epoch's adapter to continue from (mlx-lm keeps no optimizer "
+                                                    "state, so AdamW's moments start over)")
+    parser.add_argument("--start-iter", type=int, default=0, help="With --resume: the iteration it was saved at")
     args = parser.parse_args()
 
     from config import load_env
@@ -155,14 +158,19 @@ def main():
     model.freeze()
     lora = {"rank": args.rank, "scale": args.alpha / args.rank, "dropout": 0.0}
     linear_to_lora_layers(model, len(model.layers), lora)
+    if args.resume:
+        model.load_weights(str(args.resume), strict=False)
+        print(f"resumed from {args.resume} at iteration {args.start_iter}", flush=True)
     print_trainable_parameters(model)
 
     per_epoch = len(train_set) // args.batch_size
     iters = per_epoch * args.epochs
     updates = math.ceil(iters / args.grad_accum)
     warmup = max(1, int(updates * args.warmup))
-    schedule = optim.join_schedules(
+    full = optim.join_schedules(
         [optim.linear_schedule(1e-7, args.lr, warmup), optim.cosine_decay(args.lr, updates - warmup, 0.0)], [warmup])
+    offset = args.start_iter // args.grad_accum
+    schedule = (lambda step: full(step + offset)) if offset else full
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "adapter_config.json").write_text(json.dumps({
         "model": args.base, "fine_tune_type": "lora", "num_layers": len(model.layers), "lora_parameters": lora,
@@ -170,10 +178,11 @@ def main():
         "iters": iters, "iters_per_epoch": per_epoch, "train_examples": len(train_set),
     }, indent=1))
     started = time.time()
+    remaining = iters - args.start_iter
     train(model=model,
           optimizer=ClippedAdamW(learning_rate=schedule, weight_decay=0.0, max_norm=args.max_grad_norm),
           train_dataset=train_set, val_dataset=dev_set, loss=make_loss(letter_ids), iterate_batches=iterate_batches,
-          args=TrainingArgs(batch_size=args.batch_size, iters=iters, val_batches=-1, steps_per_report=20,
+          args=TrainingArgs(batch_size=args.batch_size, iters=remaining, val_batches=-1, steps_per_report=20,
                             steps_per_eval=per_epoch, steps_per_save=per_epoch, max_seq_length=args.max_seq,
                             adapter_file=str(args.out / "adapters.safetensors"), grad_checkpoint=True,
                             grad_accumulation_steps=args.grad_accum))
