@@ -27,3 +27,10 @@ def answer_logits(model, input_ids, attention_mask, position):
     hidden = body(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
     h = hidden[torch.arange(hidden.shape[0], device=hidden.device), position.to(hidden.device)]
     return base.get_output_embeddings()(h)
+
+
+def linear_layer_names(model):
+    """The names of every linear layer of the text model: no vision tower, no LM head."""
+    return {name.split(".")[-1] for name, m in model.named_modules()
+            if isinstance(m, torch.nn.Linear) and ".visual." not in name and not name.startswith("model.visual")
+            and not name.endswith("lm_head")}

@@ -22,7 +22,7 @@ from pathlib import Path
 import torch
 from huggingface_hub import snapshot_download
 from peft import PeftModel
-from transformers import AutoModelForImageTextToText, AutoProcessor
+from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForImageTextToText, AutoProcessor, AutoTokenizer
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
@@ -31,8 +31,8 @@ from soft_loss import answer_logits  # noqa: E402
 
 
 @torch.no_grad()
-def dev_agreement(model, device):
-    data = ROOT / "cloud" / "dist" / "spisev"
+def dev_agreement(model, device, bundle="spisev"):
+    data = ROOT / "cloud" / "dist" / bundle
     letters = json.loads((data / "manifest.json").read_text())["letter_ids"]
     rows = [json.loads(line) for line in (data / "data" / "dev.jsonl").open()]
     agree = 0
@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--bits", type=int, default=8)
     parser.add_argument("--mlp-scale", type=float, default=0.5, help="Factor on the MLP adapters' declared scaling")
     parser.add_argument("--max-gap", type=float, default=0.03, help="Allowed dev agreement gap with training")
+    parser.add_argument("--bundle", default="spisev", help="The cloud/dist bundle the run trained on")
     parser.add_argument("--skip-mlx", action="store_true", help="Stop after the merge (on a GPU host without MLX)")
     args = parser.parse_args()
     from config import load_env
@@ -59,7 +60,9 @@ def main():
     merged_dir, mlx_dir = args.run / "merged", args.run / f"fused-{args.bits}bit"
     base_path = snapshot_download(args.base)
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-    model = AutoModelForImageTextToText.from_pretrained(base_path, dtype=torch.bfloat16).to(device)
+    multimodal = "vision_config" in AutoConfig.from_pretrained(base_path).to_dict()
+    auto = AutoModelForImageTextToText if multimodal else AutoModelForCausalLM
+    model = auto.from_pretrained(base_path, dtype=torch.bfloat16).to(device)
     model = PeftModel.from_pretrained(model, adapter).eval()
     layers = [(name, m) for name, m in model.named_modules() if isinstance(getattr(m, "scaling", None), dict)]
     kinds = sorted({name.split(".")[-1] for name, _ in layers})
@@ -71,7 +74,7 @@ def main():
             m.scaling = {k: v * args.mlp_scale for k, v in m.scaling.items()}
 
     trained = json.loads((args.run / "synced" / "summary.json").read_text())["best"]["dev_agreement"]
-    measured = dev_agreement(model, device)
+    measured = dev_agreement(model, device, args.bundle)
     print(f"dev agreement with Mammoth: {measured:.3f} here, {trained:.3f} in training")
     if abs(measured - trained) > args.max_gap:
         sys.exit("The merged model does not reproduce the training-time dev agreement; not exporting it.")
@@ -81,7 +84,7 @@ def main():
     if merged_dir.exists():
         shutil.rmtree(merged_dir)
     model.save_pretrained(merged_dir)
-    AutoProcessor.from_pretrained(base_path).save_pretrained(merged_dir)
+    (AutoProcessor if multimodal else AutoTokenizer).from_pretrained(base_path).save_pretrained(merged_dir)
     if (Path(base_path) / "chat_template.jinja").exists():
         shutil.copy(Path(base_path) / "chat_template.jinja", merged_dir / "chat_template.jinja")
     if args.skip_mlx:

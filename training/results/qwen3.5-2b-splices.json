@@ -1,0 +1,16 @@
+{
+ "name": "qwen3.5-2b-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.8222222222222222,
+ "kl": 0.2390159510020524,
+ "ece": 0.07318794370835138,
+ "independent_precision": 1.0,
+ "independent_n": 60,
+ "action_agreement": 0.8222222222222222,
+ "latency_ms": {
+  "p50": 1209.5175410213415,
+  "p95": 4357.453375007026,
+  "max": 10102.419791015564
+ }
+}

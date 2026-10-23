@@ -1,0 +1,16 @@
+{
+ "name": "mammoth",
+ "split": "test",
+ "n": 345,
+ "agreement": 1.0,
+ "kl": 0.0,
+ "ece": 0.25646429562279527,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 1.0,
+ "latency_ms": {
+  "p50": 225.4,
+  "p95": 414.7,
+  "max": 896.9
+ }
+}

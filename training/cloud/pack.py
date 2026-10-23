@@ -44,11 +44,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tokenizer", default="Qwen/Qwen3.5-2B")
     parser.add_argument("--max-tokens", type=int, default=8192, help="Drop longer train examples")
+    parser.add_argument("--name", default="spisev", help="Bundle name: cloud/dist/NAME and NAME-bundle.tar.gz")
     args = parser.parse_args()
     load_env()
 
     tokenizer = load_tokenizer(Path(snapshot_download(args.tokenizer, allow_patterns=["*.json", "*.jinja", "*.txt"])))
-    stage = HERE / "dist" / "spisev"
+    stage = HERE / "dist" / args.name
     if stage.exists():
         shutil.rmtree(stage)
     (stage / "data").mkdir(parents=True)
@@ -70,7 +71,7 @@ def main():
                 "prompt_tokens": {"p50": lengths[len(lengths) // 2], "p95": lengths[int(len(lengths) * 0.95)],
                                   "max": lengths[-1]}}
     (stage / "manifest.json").write_text(json.dumps(manifest, indent=1))
-    out = HERE / "dist" / "spisev-bundle.tar.gz"
+    out = HERE / "dist" / f"{args.name}-bundle.tar.gz"
     with tarfile.open(out, "w:gz") as tar:
         tar.add(stage, arcname="spisev")
     digest = hashlib.sha256(out.read_bytes()).hexdigest()[:12]

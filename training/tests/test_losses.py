@@ -71,8 +71,21 @@ class Qwen35TargetsTest(unittest.TestCase):
 
     def test_the_trainer_refuses_a_partial_target_list(self):
         source = (helpers.ROOT / "cloud" / "train_unsloth.py").read_text()
-        self.assertIn('default=",".join(QWEN35_TARGETS)', source)
+        self.assertIn("targets = args.targets.split(\",\") if args.targets else sorted(every)", source)
         self.assertIn("--targets must list every linear layer", source)
+
+    def test_the_default_targets_are_every_linear_layer_of_qwen35(self):
+        try:
+            import torch
+            from transformers import AutoConfig, AutoModelForImageTextToText
+        except ImportError:
+            self.skipTest("torch/transformers not installed")
+        from soft_loss import QWEN35_TARGETS, linear_layer_names
+
+        config = AutoConfig.from_pretrained(helpers.FIXTURES / "qwen3.5-2b-config.json")
+        with torch.device("meta"):
+            model = AutoModelForImageTextToText.from_config(config)
+        self.assertEqual(linear_layer_names(model), set(QWEN35_TARGETS))
 
     def test_answer_logits_on_a_tiny_qwen35_with_lora_on_every_target(self):
         try:

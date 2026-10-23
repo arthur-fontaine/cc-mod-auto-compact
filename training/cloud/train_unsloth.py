@@ -24,7 +24,7 @@ from unsloth import FastLanguageModel, is_bf16_supported  # Unsloth must be impo
 import torch
 from transformers import Trainer, TrainerCallback, TrainingArguments
 
-from soft_loss import QWEN35_TARGETS, answer_logits, soft_cross_entropy
+from soft_loss import answer_logits, linear_layer_names, soft_cross_entropy
 
 
 class Examples(torch.utils.data.Dataset):
@@ -122,13 +122,10 @@ def main():
     parser.add_argument("--alpha", type=int, default=32)
     parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument("--save-steps", type=int, default=50, help="Optimizer steps between checkpoints")
-    parser.add_argument("--targets", default=",".join(QWEN35_TARGETS))
+    parser.add_argument("--targets", help="Default: every linear layer of the text model (Qwen3.5: the twelve of "
+                                         "soft_loss.QWEN35_TARGETS, linear-attention projections included)")
     parser.add_argument("--hard-targets", action="store_true")
     args = parser.parse_args()
-    targets = args.targets.split(",")
-    missing = set(QWEN35_TARGETS) - set(targets)
-    if missing:
-        raise SystemExit(f"--targets must list every linear layer; missing {sorted(missing)}")
 
     manifest = json.loads((args.data.parent / "manifest.json").read_text())
     read = lambda name: [json.loads(line) for line in (args.data / f"{name}.jsonl").open()]
@@ -139,6 +136,11 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=args.base, max_seq_length=args.max_len, load_in_4bit=False, load_in_16bit=True,
         full_finetuning=False)
+    every = linear_layer_names(model)
+    targets = args.targets.split(",") if args.targets else sorted(every)
+    missing = every - set(targets)
+    if missing:
+        raise SystemExit(f"--targets must list every linear layer; missing {sorted(missing)}")
     tok = getattr(tokenizer, "tokenizer", tokenizer)
     letters = [tok.encode(c, add_special_tokens=False)[0] for c in "ABCDE"]
     assert letters == manifest["letter_ids"], f"tokenizer mismatch: {letters} vs {manifest['letter_ids']}"
