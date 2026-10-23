@@ -37,8 +37,14 @@ export function sentTokens(state) {
   return estimateTokens(pyJson({ state, questions: { [QUESTION_ID]: question() } }))
 }
 
+// Decision servers refuse a state holding chat or media tokens (`<|im_start|>`): break them.
+export function neutralize(text) {
+  return text.replace(/<\|([A-Za-z0-9_]+)\|>/g, '< |$1| >')
+}
+
 export function clipState(conversation, message) {
-  conversation = clip(conversation, MAX_CONVERSATION_BYTES)
+  conversation = clip(neutralize(conversation), MAX_CONVERSATION_BYTES)
+  message = neutralize(message)
   let room = MAX_TOKENS - fixedTokens() - estimateTokens(pyJson(conversation)) - 16
   const state = { conversation, latest_user_message: clip(message, MAX_MESSAGE_BYTES, Math.max(room, 64)) }
   for (let i = 0; i < 4; i++) {

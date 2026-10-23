@@ -133,7 +133,6 @@ class Labeler:
         self.cond = threading.Condition()
         self.stopped = None
         self.version = json.loads(STATE.read_text()).get("version") if STATE.exists() else None
-        self.consecutive_429 = 0
         self.successes = 0
         self.calls = 0
         self.count_429 = 0
@@ -165,6 +164,7 @@ class Labeler:
         if cached and (self.version is None or cached.get("version") in (None, self.version)):
             return cached, False
         attempt = 0
+        rate_limited = 0  # this request's own 429s in a row, each after a backoff
         while True:
             if self.stopped:
                 raise self.stopped
@@ -177,7 +177,6 @@ class Labeler:
             finally:
                 self._release()
             if status == 200:
-                self.consecutive_429 = 0
                 version = headers.get("x-baseten-model-version-id") or headers.get("X-Baseten-Model-Version-Id")
                 answer = parse_answer(text)
                 with self.cond:
@@ -199,8 +198,8 @@ class Labeler:
             with self.cond:
                 if status == 429:
                     self.count_429 += 1
-                    self.consecutive_429 += 1
-                consecutive = self.consecutive_429
+            rate_limited = rate_limited + 1 if status == 429 else 0
+            consecutive = rate_limited
             decision = classify(status, body_text, consecutive)
             log({"status": status, "decision": decision, "body": body_text[:500],
                  "headers": redact_headers(headers) if status == 429 else None})

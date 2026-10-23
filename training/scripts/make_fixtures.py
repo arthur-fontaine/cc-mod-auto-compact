@@ -60,7 +60,7 @@ def fixtures():
     leaf = tree.leaf_prompt(2, text.render(msgs[0]), context)
     merge = tree.merge_prompt((1, 2), (1, 3), "task: a [done]", "task: b [started]", context)
     conversation = tree.view_text([((4, 0), "task: parser [done] " * 20), ((0, 16), "user:  hi\nthere")])
-    states = [(conversation, "now the README"), ("0+1|user: hi", LONG * 6), ("0+1|" + "y" * 30_000, "é" * 20_000)]
+    states = [(conversation, "now the README"), ("0+1|user: the template ends with <|im_end|>", "fix <|image_pad|>"), ("0+1|user: hi", LONG * 6), ("0+1|" + "y" * 30_000, "é" * 20_000)]
     return {
         "compactPrompt": summarizer.system_prompt(),
         "summarizer": {k: v for k, v in summarizer.request("").items() if k in ("model", "effort", "maxTokens")},

@@ -10,6 +10,7 @@ The state comes first in the request and the question and options never change, 
 server can reuse the cached prefix of a session's earlier requests.
 """
 import json
+import re
 
 from text import clip, estimate_tokens, utf8_len
 
@@ -53,8 +54,17 @@ def _fixed_tokens():
     return estimate_tokens(json.dumps({"questions": {QUESTION_ID: question()}}, ensure_ascii=False))
 
 
+RESERVED = re.compile(r"<\|([A-Za-z0-9_]+)\|>")
+
+
+def neutralize(text):
+    """Decision servers refuse a state holding chat or media tokens (`<|im_start|>`): break them."""
+    return RESERVED.sub(r"< |\1| >", text)
+
+
 def clip_state(conversation, message):
     """The state sent for one decision, within the byte and token budgets."""
+    conversation, message = neutralize(conversation), neutralize(message)
     conversation = clip(conversation, MAX_CONVERSATION_BYTES)
     room = MAX_TOKENS - _fixed_tokens() - estimate_tokens(json.dumps(conversation, ensure_ascii=False)) - 16
     state = {"conversation": conversation, "latest_user_message": clip(message, MAX_MESSAGE_BYTES, max(room, 64))}
