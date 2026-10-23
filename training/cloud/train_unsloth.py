@@ -120,7 +120,7 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--rank", type=int, default=16)
     parser.add_argument("--alpha", type=int, default=32)
-    parser.add_argument("--max-len", type=int, default=8192)
+    parser.add_argument("--max-len", type=int, default=12288)
     parser.add_argument("--save-steps", type=int, default=50, help="Optimizer steps between checkpoints")
     parser.add_argument("--targets", help="Default: every linear layer of the text model (Qwen3.5: the twelve of "
                                          "soft_loss.QWEN35_TARGETS, linear-attention projections included)")
