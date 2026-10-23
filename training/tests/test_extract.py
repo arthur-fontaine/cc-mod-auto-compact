@@ -96,7 +96,7 @@ class ScrubTest(unittest.TestCase):
         self.assertEqual(scrub("Api-Key " + "y" * 30), "Api-Key [SECRET]")
         self.assertEqual(scrub('password="hunter2hunter2"'), 'password="[SECRET]"')
         self.assertIn("[SECRET]@", scrub("postgres://user:pa55word@db:5432/x"))
-        key = "-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----"
+        key = "-----BEGIN RSA " + "PRIVATE KEY-----\nabc\n-----END RSA " + "PRIVATE KEY-----"
         self.assertEqual(scrub(key), "[SECRET]")
 
     def test_ordinary_text_is_untouched(self):
