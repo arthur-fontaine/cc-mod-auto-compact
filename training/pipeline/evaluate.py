@@ -3,6 +3,7 @@
     uv run python pipeline/evaluate.py --model runs/qwen3-1.7b/fused-8bit --name qwen3-1.7b-mlx
     uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8790/v1/systemone --name qwen3-1.7b
     uv run python pipeline/evaluate.py --mammoth --name mammoth          # its latency, one request at a time
+    uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
     uv run python pipeline/alpha_report.py                               # the section 11 table
 
 Mammoth is the reference: top-1 agreement with its pick, KL to its distribution,
@@ -43,6 +44,7 @@ def main():
     parser.add_argument("--model", help="An MLX model directory")
     parser.add_argument("--endpoint", help="A System One endpoint (llama-server)")
     parser.add_argument("--mammoth", action="store_true", help="Re-ask Mammoth one request at a time for latency")
+    parser.add_argument("--cloud", metavar="MODEL", help="Another model on the teacher's System One endpoint")
     parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
     parser.add_argument("--name", required=True)
     parser.add_argument("--split", default="test")
@@ -69,17 +71,20 @@ def main():
             except Exception as err:  # the mod keeps the context on an error; the benchmark scores it so
                 print(f"{e['id']}: {str(err)[:120]}", file=sys.stderr, flush=True)
                 preds.append((None, (time.perf_counter() - started) * 1000))
-    elif args.mammoth:
+    elif args.mammoth or args.cloud:
         import tempfile
         import teacher
         endpoint, key, model = teacher.settings()
+        model = args.cloud or model
         with tempfile.TemporaryDirectory() as tmp:
-            labeler = teacher.Labeler(endpoint, key, model, teacher.Cache(Path(tmp)), start_concurrency=1)
+            # Another model is served under its own versions: keep them out of the teacher's state.
+            state = Path(tmp) / "state.json" if args.cloud else teacher.STATE
+            labeler = teacher.Labeler(endpoint, key, model, teacher.Cache(Path(tmp)), start_concurrency=1, state=state)
             for e in rows:
                 entry, _ = labeler.label(request(e["state"], model))
                 preds.append((entry["probabilities"], entry["latency_ms"]))
     else:
-        parser.error("give --model, --endpoint or --mammoth")
+        parser.error("give --model, --endpoint, --mammoth or --cloud")
 
     answered = [(p, e) for (p, _), e in zip(preds, rows) if p is not None]
     scored = score([{"probs": p, "reference": dict(zip(CATEGORIES, e["targets"])), "weak": e.get("weak")}

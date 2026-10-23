@@ -125,14 +125,15 @@ def parse_answer(text):
 
 
 class Labeler:
-    def __init__(self, endpoint, key, model, cache, post_fn=post, sleep=time.sleep, start_concurrency=2):
+    def __init__(self, endpoint, key, model, cache, post_fn=post, sleep=time.sleep, start_concurrency=2, state=None):
         self.endpoint, self.key, self.model, self.cache = endpoint, key, model, cache
+        self.state = state or STATE
         self.post, self.sleep = post_fn, sleep
         self.concurrency = start_concurrency
         self.in_flight = 0
         self.cond = threading.Condition()
         self.stopped = None
-        self.version = json.loads(STATE.read_text()).get("version") if STATE.exists() else None
+        self.version = json.loads(self.state.read_text()).get("version") if self.state.exists() else None
         self.successes = 0
         self.calls = 0
         self.count_429 = 0
@@ -182,8 +183,8 @@ class Labeler:
                 with self.cond:
                     if self.version is None and version:
                         self.version = version
-                        STATE.parent.mkdir(parents=True, exist_ok=True)
-                        STATE.write_text(json.dumps({"version": version, "model": self.model}))
+                        self.state.parent.mkdir(parents=True, exist_ok=True)
+                        self.state.write_text(json.dumps({"version": version, "model": self.model}))
                     elif version and version != self.version:
                         self._stop(VersionChanged(f"served version changed from {self.version} to {version}"))
                         raise self.stopped
