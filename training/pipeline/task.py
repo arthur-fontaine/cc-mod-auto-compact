@@ -56,8 +56,20 @@ def _fixed_tokens():
 def clip_state(conversation, message):
     """The state sent for one decision, within the byte and token budgets."""
     conversation = clip(conversation, MAX_CONVERSATION_BYTES)
-    room = MAX_TOKENS - _fixed_tokens() - estimate_tokens(conversation) - 16
-    return {"conversation": conversation, "latest_user_message": clip(message, MAX_MESSAGE_BYTES, max(room, 64))}
+    room = MAX_TOKENS - _fixed_tokens() - estimate_tokens(json.dumps(conversation, ensure_ascii=False)) - 16
+    state = {"conversation": conversation, "latest_user_message": clip(message, MAX_MESSAGE_BYTES, max(room, 64))}
+    # JSON escaping (newlines, quotes) makes the sent text longer than the text: shrink by the excess.
+    for _ in range(4):
+        over = sent_tokens(state) - MAX_TOKENS
+        if over <= 0:
+            break
+        room -= over
+        state["latest_user_message"] = clip(message, MAX_MESSAGE_BYTES, max(room, 64))
+    return state
+
+
+def sent_tokens(state):
+    return estimate_tokens(json.dumps({"state": state, "questions": {QUESTION_ID: question()}}, ensure_ascii=False))
 
 
 def request(state, model):

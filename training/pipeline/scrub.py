@@ -21,7 +21,7 @@ SECRETS = [
     (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-]{20,}"), r"\1[SECRET]"),
     (re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://[^\s:/@]+:)[^\s@/]{3,}@"), r"\1[SECRET]@"),
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "[SECRET]"),
-    (re.compile(r"(?i)\b(password|passwd|api[_-]?key|secret|token|access[_-]?key)(\"?\s*[:=]\s*)['\"]?[^\s'\",]{8,}"),
+    (re.compile(r"(?i)\b(password|passwd|api[_-]?key|secret|token|access[_-]?key)(\"?\s*[:=]\s*['\"]?)[^\s'\",]{8,}"),
      r"\1\2[SECRET]"),
 ]
 

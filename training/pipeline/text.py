@@ -85,6 +85,8 @@ def command_of(text):
 
 
 def tool_line(use):
+    if use.get("line"):  # rendered by extract.py from the full input, which it does not keep
+        return use["line"]
     args = json.dumps(use.get("input") or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     line = f"tool: {use.get('tool') or '?'} {clip(args, MAX_TOOL_INPUT_BYTES)}"
     return line + (" (error)" if use.get("isError") else "")

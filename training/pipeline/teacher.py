@@ -281,15 +281,16 @@ def main():
           f"(~{tokens / 1e6:.2f}M input tokens) at {endpoint}", flush=True)
 
     labeler = Labeler(endpoint, key, model, cache)
-    results, failures = {}, 0
+    results, failures, new_tokens = {}, 0, 0
     lock = threading.Lock()
 
     def work(i):
-        nonlocal failures
+        nonlocal failures, new_tokens
         try:
-            entry, _ = labeler.label(bodies[i])
+            entry, new = labeler.label(bodies[i])
             with lock:
                 results[i] = entry
+                new_tokens += (entry.get("input_tokens") or 0) if new else 0
         except (TeacherStop, VersionChanged):
             pass
         except Exception as e:
@@ -313,9 +314,8 @@ def main():
                                     "probabilities": e["probabilities"], "confidence": e.get("confidence"),
                                     "version": e.get("version"), "latency_ms": e.get("latency_ms"),
                                     "input_tokens": e.get("input_tokens")}) + "\n")
-    tokens_used = sum(results[i].get("input_tokens") or 0 for i in results)
-    print(f"[mammoth] spend: {labeler.calls} calls, {tokens_used} input tokens, billed "
-          f"${tokens_used * billed_price() / 1e6:.2f}; {len(results)} labeled, {failures} failed -> {args.out}")
+    print(f"[mammoth] spend: {labeler.calls} new calls, {new_tokens} new input tokens, billed "
+          f"${new_tokens * billed_price() / 1e6:.2f}; {len(results)} labeled, {failures} failed -> {args.out}")
     if isinstance(labeler.stopped, TeacherStop):
         notify_stop()
         print(stop_block(labeler.stopped, len(results), len(rows) - len(results)))
