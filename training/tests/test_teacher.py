@@ -119,6 +119,17 @@ class LabelerTest(Base):
         with self.assertRaises(teacher.VersionChanged):
             lab.label({"n": 2})
 
+    def test_an_answer_of_another_served_version_is_asked_again_once(self):
+        script = Script([ok("related", version="v1"), ok("independent", version="v2")])
+        self.labeler(script).label({"n": 1})
+        teacher.STATE.write_text('{"version": "v2"}')
+        lab = self.labeler(script)
+        entry, new = lab.label({"n": 1})
+        self.assertTrue(new)
+        self.assertEqual((entry["choice"], entry["version"]), ("independent", "v2"))
+        self.assertFalse(self.labeler(script).label({"n": 1})[1])
+        self.assertEqual(script.calls, 2)
+
     def test_cache_stores_distribution_latency_tokens_and_no_headers_with_keys(self):
         entry, _ = self.labeler(Script([ok()])).label({"n": 1})
         self.assertEqual(set(entry["probabilities"]), set(CATEGORIES))

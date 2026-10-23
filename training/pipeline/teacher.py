@@ -158,10 +158,11 @@ class Labeler:
             self.cond.notify_all()
 
     def label(self, body):
-        """The teacher's answer for one request, from the cache when it has it."""
+        """The teacher's answer for one request, from the cache when it has it. An answer cached
+        under another served version than the one accepted is asked again, once."""
         key = cache_key(self.model, body)
         cached = self.cache.get(key)
-        if cached:
+        if cached and (self.version is None or cached.get("version") in (None, self.version)):
             return cached, False
         attempt = 0
         while True:
@@ -262,8 +263,16 @@ def main():
     parser.add_argument("--limit-sessions", type=int)
     parser.add_argument("--splits", default="train,dev,test")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--accept-version", help="Label with this newly served version (answers of other "
+                                                 "versions are asked again); the previous one is recorded")
     args = parser.parse_args()
     endpoint, key, model = settings()
+    if args.accept_version:
+        old = json.loads(STATE.read_text()) if STATE.exists() else {}
+        STATE.write_text(json.dumps({"version": args.accept_version, "model": model,
+                                     "previous": old.get("previous", []) + ([old["version"]] if old.get("version") else []),
+                                     "accepted_at": time.time()}))
+        print(f"[mammoth] accepted served version {args.accept_version} (was {old.get('version')})", flush=True)
 
     rows = [json.loads(line) for line in args.states.open()]
     rows = [r for r in rows if r["split"] in args.splits.split(",")]
@@ -272,7 +281,9 @@ def main():
         rows = [r for r in rows if r["session_key"] in set(keep)]
     cache = Cache()
     bodies = [request(r["state"], model) for r in rows]
-    todo = [b for b in bodies if not cache.get(cache_key(model, b))]
+    current = json.loads(STATE.read_text()).get("version") if STATE.exists() else None
+    todo = [b for b in bodies if not cache.get(cache_key(model, b))
+            or (current and cache.get(cache_key(model, b)).get("version") not in (None, current))]
     tokens = sum(state_size(b["state"])["est_tokens"] for b in todo)
     if not guard_spend("mammoth", calls=len(todo), billed_usd=tokens * billed_price() / 1e6, list_usd=None,
                        dry_run=args.dry_run):

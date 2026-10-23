@@ -115,7 +115,20 @@ def _reset_time(text):
     return m.group(2).strip() if m else None
 
 
+CALL_TIMEOUT_S = 180
+
+
 async def complete(prompt):
+    """One completion, retried once if it hangs past CALL_TIMEOUT_S."""
+    for attempt in range(2):
+        try:
+            return await asyncio.wait_for(_complete(prompt), CALL_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            if attempt:
+                raise RuntimeError(f"summary call timed out twice after {CALL_TIMEOUT_S}s")
+
+
+async def _complete(prompt):
     """One completion: (text, usage dict). Raises UsageLimit on a usage or rate limit."""
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, query
 
