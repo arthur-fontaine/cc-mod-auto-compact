@@ -43,6 +43,7 @@ def main():
     parser.add_argument("--model", help="An MLX model directory")
     parser.add_argument("--endpoint", help="A System One endpoint (llama-server)")
     parser.add_argument("--mammoth", action="store_true", help="Re-ask Mammoth one request at a time for latency")
+    parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
     parser.add_argument("--name", required=True)
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int)
@@ -60,8 +61,14 @@ def main():
             p = clf.predict(e["state"])
             preds.append((p["probabilities"], p["ms"]))
     elif args.endpoint:
-        ask_endpoint(args.endpoint, rows[0]["state"])  # warm up
-        preds = [ask_endpoint(args.endpoint, e["state"]) for e in rows]
+        ask_endpoint(args.endpoint, rows[0]["state"], args.api_model)  # warm up
+        for e in rows:
+            started = time.perf_counter()
+            try:
+                preds.append(ask_endpoint(args.endpoint, e["state"], args.api_model))
+            except Exception as err:  # the mod keeps the context on an error; the benchmark scores it so
+                print(f"{e['id']}: {str(err)[:120]}", file=sys.stderr, flush=True)
+                preds.append((None, (time.perf_counter() - started) * 1000))
     elif args.mammoth:
         import tempfile
         import teacher
@@ -74,8 +81,12 @@ def main():
     else:
         parser.error("give --model, --endpoint or --mammoth")
 
+    answered = [(p, e) for (p, _), e in zip(preds, rows) if p is not None]
     scored = score([{"probs": p, "reference": dict(zip(CATEGORIES, e["targets"])), "weak": e.get("weak")}
-                    for (p, _), e in zip(preds, rows)])
+                    for p, e in answered])
+    scored["errors"] = len(rows) - len(answered)
+    agrees = iter(scored["correct"])
+    scored["correct"] = [next(agrees) if p is not None else False for p, _ in preds]
     result = {"name": args.name, "split": args.split, **{k: v for k, v in scored.items() if k != "correct"},
               "latency_ms": percentiles([ms for _, ms in preds])}
     out = ROOT / "results"
