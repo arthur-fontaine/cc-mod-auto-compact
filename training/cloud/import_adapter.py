@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--bits", type=int, default=8)
     parser.add_argument("--mlp-scale", type=float, default=0.5, help="Factor on the MLP adapters' declared scaling")
     parser.add_argument("--max-gap", type=float, default=0.03, help="Allowed dev agreement gap with training")
+    parser.add_argument("--skip-mlx", action="store_true", help="Stop after the merge (on a GPU host without MLX)")
     args = parser.parse_args()
     from config import load_env
     load_env()
@@ -57,7 +58,7 @@ def main():
     adapter = args.run / "synced" / "best"
     merged_dir, mlx_dir = args.run / "merged", args.run / f"fused-{args.bits}bit"
     base_path = snapshot_download(args.base)
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     model = AutoModelForImageTextToText.from_pretrained(base_path, dtype=torch.bfloat16).to(device)
     model = PeftModel.from_pretrained(model, adapter).eval()
     layers = [(name, m) for name, m in model.named_modules() if isinstance(getattr(m, "scaling", None), dict)]
@@ -83,6 +84,9 @@ def main():
     AutoProcessor.from_pretrained(base_path).save_pretrained(merged_dir)
     if (Path(base_path) / "chat_template.jinja").exists():
         shutil.copy(Path(base_path) / "chat_template.jinja", merged_dir / "chat_template.jinja")
+    if args.skip_mlx:
+        print(f"-> {merged_dir}")
+        return
     if mlx_dir.exists():
         shutil.rmtree(mlx_dir)
     convert = Path(sys.executable).parent / "mlx_lm.convert"
