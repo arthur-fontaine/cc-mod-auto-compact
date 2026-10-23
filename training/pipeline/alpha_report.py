@@ -34,11 +34,27 @@ def main():
     parser.add_argument("--b", default="qwen3.5-2b")
     parser.add_argument("--mammoth", default="mammoth")
     parser.add_argument("--labels", nargs=3, default=["Qwen3-1.7B (MLX LoRA), GGUF Q8_0",
-                                                      "Qwen3.5-2B (Unsloth LoRA on Colab), GGUF Q8_0",
+                                                      "Qwen3.5-2B (Unsloth LoRA, Colab T4 + RunPod 3090), GGUF Q8_0",
                                                       "Mammoth (Baseten, reference)"])
     args = parser.parse_args()
+    splices = ROOT / "data" / "split" / "test-splices.jsonl"
+    mammoth_splices = None
+    if splices.exists():
+        rows = [json.loads(line) for line in splices.open()]
+        picks = [max(range(5), key=r["targets"].__getitem__) for r in rows]
+        ind = [r for r, k in zip(rows, picks) if k == 3]
+        mammoth_splices = (sum(r["weak"] == "new_task" for r in ind) / len(ind) if ind else None, len(ind))
+
+    def precision(name, r):
+        if name == args.mammoth and mammoth_splices:
+            return mammoth_splices
+        held, _ = load(name + "-splices")
+        if held:
+            return held["independent_precision"], held["independent_n"]
+        return r["independent_precision"], r["independent_n"]
+
     print("| Model | Top-1 agreement with Mammoth | KL to Mammoth | Calibration error | Precision of `independent` "
-          "(weak labels) | Action agreement | Latency p50 / p95 |")
+          "(weak labels, held-out splices) | Action agreement | Latency p50 / p95 |")
     print("| :- | -: | -: | -: | -: | -: | -: |")
     for name, label in zip((args.a, args.b, args.mammoth), args.labels):
         r, _ = load(name)
@@ -48,7 +64,7 @@ def main():
         ref = name == args.mammoth
         lat = r["latency_ms"]
         print(f"| {label} | {'reference' if ref else pct(r['agreement'])} | {'0' if ref else f'{r['kl']:.3f}'} "
-              f"| {'' if ref else f'{r['ece']:.3f}'} | {pct(r['independent_precision'])} (n={r['independent_n']}) "
+              f"| {'' if ref else f'{r['ece']:.3f}'} | {pct(precision(name, r)[0])} (n={precision(name, r)[1]}) "
               f"| {'reference' if ref else pct(r['action_agreement'])} | {lat['p50']:.0f} / {lat['p95']:.0f} ms |")
     (ra, pa), (rb, pb) = load(args.a), load(args.b)
     if pa and pb:
