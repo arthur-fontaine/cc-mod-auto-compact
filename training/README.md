@@ -302,7 +302,9 @@ was $7.69 for Sonnet and $15.61 for Opus.
 is [auto-effort](https://github.com/arthur-fontaine/cc-mod-auto-effort)'s decision model,
 asked this question zero-shot through the same System One request. Mammoth's test answers
 come from `evaluate.py --mammoth`; on the splices it reuses the teacher labels, which were
-asked the same way. Latency comes from the test runs only; a failed request would count as
+asked the same way. Elephant (`decision-models/baseten-elephant-9b-latest`, the same lab and
+endpoint) comes from `evaluate.py --cloud`, which keeps its served versions out of
+Mammoth's `data/teacher-state.json`. Latency comes from the test runs only; a failed request would count as
 keep, as in the mod, and none failed.
 
 ```sh
@@ -313,6 +315,9 @@ llama-server -m Kev-4B-Q8_0.gguf --port 8767 -c 16384
 uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8767/v1/systemone --api-model kev-4b --name kev-4b
 uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8767/v1/systemone --api-model kev-4b \
   --split test-splices --name kev-4b-splices
+uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
+uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --split test-splices \
+  --name elephant-splices
 uv run python pipeline/benchmark.py     # results/bench-*.json, the table and the McNemar tests
 uv run python pipeline/plot.py          # ../docs/benchmark.svg
 ```
@@ -322,3 +327,12 @@ one-sided exact binomial test puts above always keeping (76.8% on these 418 poin
 p < 0.05, which is 80.4%. Kev's run on the test split shared the Mac with the hindsight
 jobs for part of its duration, so its latency may read slightly high; those jobs were
 `claude -p` processes waiting on the network.
+
+The local p95 comes from prefill. The slowest 10% of test states hold 3k to 11k tokens
+(median 647), and `llama-bench` on the Spisev GGUF reads 1,980 tokens/s at 1k, 1,590 at 4k
+and 1,310 at 8k with the defaults (`-ub 512`); `-ub 2048` is slower and flash attention
+changes nothing. The 11k-token state took 8.4 s. llama-server's prompt cache would reuse
+45% of the tokens between consecutive test prompts of a session, but only 13.5% on the
+states over 3k tokens, because the coarse lines at the front of the view change as the
+session grows. `benchmark.py` applies the mod's 4 s timeout to the auto-mode column: a later
+answer counts as keep (3 Spisev answers, 1 Qwen3.5-2B, 44 Kev; it changes no score there).

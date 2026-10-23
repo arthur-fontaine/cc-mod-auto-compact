@@ -90,7 +90,7 @@ clip, summarize and ask alike.
 
 ## Benchmark
 
-![Right action against median latency, one point per model. Spisev 1.7B and Mammoth are in the fast and accurate zone; Qwen3.5-2B sits on its latency edge and Kev-4B well outside it.](docs/benchmark.svg)
+![Right action against median latency, one point per model. Spisev 1.7B, Elephant and Mammoth are in the fast and accurate zone; Qwen3.5-2B sits on its latency edge and Kev-4B well outside it.](docs/benchmark.svg)
 
 **The test**: 418 decisions, from 334 held-out prompts of 94 real coding sessions plus 84
 held-out splices (the end of one session followed by the first prompt of another, where the
@@ -101,8 +101,8 @@ and the developer's following prompts. They agreed on 96% of the points; the res
 out. Always keeping the context gets 76.8% right.
 
 **The setup**: each model got the request the mod sends it, one at a time. The local models
-ran in llama.cpp b11669 on an Apple M4 Pro with 24 GB. Mammoth's latency includes the round
-trip from that Mac to Baseten.
+ran in llama.cpp b11669 on an Apple M4 Pro with 24 GB. Elephant and Mammoth, from the same
+lab, ran on Baseten; their latency includes the round trip from that Mac.
 
 **The green zone** is where a decision model should be. Both edges are set by a rule, not
 read off the results:
@@ -120,6 +120,7 @@ read off the results:
 | **Spisev 1.7B** | Local · llama.cpp · Q8_0, 1.8 GB | 93.3% | 97.5% | 79.4% | 87.1% | 81.5% | 138 / 2590 ms |
 | Qwen3.5-2B, same recipe | Local · llama.cpp · Q8_0, 2.0 GB | 93.8% | 97.2% | 82.5% | 87.8% | 83.6% | 431 / 1913 ms |
 | Kev-4B | Local · llama.cpp · Q8_0, 4.5 GB | 83.0% | 87.5% | 68.0% | 76.8% | 62.0% | 1219 / 6225 ms |
+| Elephant 9B | Cloud · Baseten | 94.3% | 98.1% | 81.4% | 86.6% | 74.7% | 194 / 276 ms |
 | Mammoth 27B | Cloud · Baseten | 96.9% | 98.4% | 91.8% | 91.9% | 86.8% | 225 / 415 ms |
 | Always keep | | 76.8% | 100% | 0% | 76.8% | | |
 
@@ -130,17 +131,19 @@ read off the results:
 - **Acted when it should**: of the 97 points where the teachers compact or clear, how many
   the model handles the same way.
 - **Right action, auto mode**: what the mod ends up doing in auto mode. It acts only at a
-  confidence of 0.85 or more, and otherwise keeps the context.
+  confidence of 0.85 or more and within its 4 s timeout, and otherwise keeps the context.
 - **Right category**: the exact category, on the 379 points where the teachers also agreed
   on it.
 
 What stands out:
 
 - **Every model beats always keeping**, compared point by point (one-sided exact McNemar
-  test): Spisev, Qwen3.5-2B and Mammoth at p < 0.0001, Kev at p = 0.007.
-- **Spisev and Qwen3.5-2B are tied**: 11 points only Spisev gets right, 13 only Qwen3.5-2B
-  (p = 0.84). Spisev answers three times faster at the median, which is why it is the
-  default.
+  test): Spisev, Qwen3.5-2B, Elephant and Mammoth at p < 0.0001, Kev at p = 0.007.
+- **Spisev, Qwen3.5-2B and Elephant are tied**: against Spisev, 13 points only Qwen3.5-2B
+  gets right and 11 the other way (p = 0.84); 14 only Elephant and 10 the other way
+  (p = 0.54). Spisev answers three times faster than Qwen3.5-2B at the median, and needs no
+  network or key, which is why it is the default. Elephant is the steadiest: 276 ms at p95,
+  but it gets the exact category less often (74.7%).
 - **Mammoth is ahead of Spisev** (6 points against 21, p = 0.006), as expected: it is the
   teacher Spisev was distilled from, at 16 times the size. It needs the network and a
   Baseten key; Spisev runs on the Mac.
@@ -149,8 +152,13 @@ What stands out:
   (no answer at 0.85 or more, median 0.38), so in auto mode it does exactly what always
   keeping does. It answers zero-shot; it was trained for [auto-effort](https://github.com/arthur-fontaine/cc-mod-auto-effort)'s question,
   not this one.
-- **Spisev's p95 is 2.6 s**: the longest states take 8 to 9k tokens of prefill. Past the
-  4 s timeout the mod keeps the context.
+- **The local p95 is prefill, not noise**: the slowest 10% of states are 3k to 11k tokens,
+  against 650 at the median, and the M4 Pro reads 2,000 tokens a second at 1k falling to
+  1,300 at 8k (llama-bench; larger batches or flash attention do not help). The prompt
+  cache saves little there, since the coarse lines at the front of the view change as the
+  session grows. Spisev passed the 4 s timeout on 3 of 345 prompts, where the mod keeps the
+  context; Kev on 47. The cloud models read long states on bigger GPUs: their p95 stays
+  under 0.5 s.
 
 To rerun it, run `uv run python pipeline/benchmark.py` then `uv run python pipeline/plot.py`
 in [`training/`](training/README.md#benchmark), which also explains how the answer key and

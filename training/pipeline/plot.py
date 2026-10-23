@@ -20,6 +20,7 @@ Y_MIN, Y_MAX = 70, 100  # % right action
 # within 400 ms; Doherty and Thadani, IBM, 1982), and above the lowest score that beats always
 # keeping the context by more than chance on these points (benchmark.threshold).
 GOAL_MS = 400
+LABELS = {"spisev": "below", "qwen3.5-2b": "below", "elephant": "left"}
 
 
 def results():
@@ -98,9 +99,11 @@ def svg():
                        f'style="font-size: 11px">p95 {lat["p95"] / 1000:.1f} s →</text>')
         out.append(f'<circle class="{kind}" cx="{cx:.1f}" cy="{cy:.1f}" r="6" stroke-width="2.5"/>')
         label = r["label"].split(" (")[0] + (" (local)" if local else " (cloud)")
-        below = r["name"] == "qwen3.5-2b"  # it sits just above Spisev's label
-        ly = cy + 24 if below else cy - 12
-        out.append(f'<text x="{cx:.1f}" y="{ly:.1f}" text-anchor="middle" style="font-weight: 600">{label}</text>')
+        # Spisev, Elephant and Qwen3.5 sit within a point of each other: spread their labels.
+        place = LABELS.get(r["name"], "above")
+        lx, ly, anchor = {"above": (cx, cy - 12, "middle"), "below": (cx, cy + 24, "middle"),
+                          "left": (cx - 10, cy - 10, "end")}[place]
+        out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" style="font-weight: 600">{label}</text>')
 
     out.append(f'<text x="{LEFT}" y="26" style="font-size: 16px; font-weight: 600">Right action against latency</text>')
     out.append(f'<text x="{(LEFT + W - RIGHT) / 2:.0f}" y="{H - 18}" text-anchor="middle" class="muted">'

@@ -25,12 +25,14 @@ from task import CATEGORIES  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 DATA, RESULTS = ROOT / "data", ROOT / "results"
 AUTO_CONFIDENCE = 0.85
+TIMEOUT_MS = 4000  # the mod's default: past it, it keeps the context
 
 # name, label, where it runs, predictions on test, predictions on held-out splices
 CONTENDERS = [
     ("spisev", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "qwen3-1.7b", "qwen3-1.7b-splices"),
     ("qwen3.5-2b", "Qwen3.5-2B (same recipe)", "Local · llama.cpp · Q8_0, 2.0 GB", "qwen3.5-2b", "qwen3.5-2b-splices"),
     ("kev-4b", "Kev-4B (zero-shot)", "Local · llama.cpp · Q8_0, 4.5 GB", "kev-4b", "kev-4b-splices"),
+    ("elephant", "Elephant 9B", "Cloud · Baseten", "elephant", "elephant-splices"),
     ("mammoth", "Mammoth 27B", "Cloud · Baseten", "mammoth", None),
 ]
 
@@ -81,7 +83,8 @@ def score(preds, g):
             continue
         probs, ms = preds[pid]
         cat, act, conf = decide(probs)
-        applied = act if act == "keep" or conf >= AUTO_CONFIDENCE else "keep"
+        late = ms is not None and ms > TIMEOUT_MS
+        applied = act if act == "keep" or (conf >= AUTO_CONFIDENCE and not late) else "keep"
         rows.append({"id": pid, "gold_action": gl["action"], "gold_category": gl["category"], "action": act,
                      "category": cat, "applied": applied, "ms": ms, "error": probs is None})
     n = len(rows)
@@ -97,6 +100,7 @@ def score(preds, g):
         "right_action_applied": sum(r["applied"] == r["gold_action"] for r in rows) / n,
         "right_category": sum(r["category"] == r["gold_category"] for r in cats) / len(cats),
         "errors": sum(r["error"] for r in rows),
+        "timeouts": sum(r["ms"] is not None and r["ms"] > TIMEOUT_MS for r in rows),
         "latency_ms": {"p50": ms[len(ms) // 2], "p95": ms[min(len(ms) - 1, int(len(ms) * 0.95))]} if ms else None,
         "rows": rows,
     }

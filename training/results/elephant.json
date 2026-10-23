@@ -1,0 +1,17 @@
+{
+ "name": "elephant",
+ "split": "test",
+ "n": 345,
+ "agreement": 0.7971014492753623,
+ "kl": 0.19286371359623689,
+ "ece": 0.14539795235092642,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9594202898550724,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 194.0,
+  "p95": 275.1,
+  "max": 521.6
+ }
+}

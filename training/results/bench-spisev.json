@@ -9,6 +9,7 @@
  "right_action_applied": 0.8708133971291866,
  "right_category": 0.8153034300791556,
  "errors": 0,
+ "timeouts": 3,
  "latency_ms": {
   "p50": 137.7848330012057,
   "p95": 2590.048915997613

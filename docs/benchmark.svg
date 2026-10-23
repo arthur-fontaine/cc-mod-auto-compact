@@ -41,7 +41,7 @@
 <text class="muted" x="726" y="342.7" text-anchor="end">always keep the context (76.8%)</text>
 <line x1="129.3" x2="654.2" y1="134.1" y2="134.1" class="local-tail" stroke-width="2" stroke-opacity="0.35"/>
 <circle class="local" cx="129.3" cy="134.1" r="6" stroke-width="2.5"/>
-<text x="129.3" y="122.1" text-anchor="middle" style="font-weight: 600">Spisev 1.7B (local)</text>
+<text x="129.3" y="158.1" text-anchor="middle" style="font-weight: 600">Spisev 1.7B (local)</text>
 <line x1="333.3" x2="600.0" y1="128.6" y2="128.6" class="local-tail" stroke-width="2" stroke-opacity="0.35"/>
 <circle class="local" cx="333.3" cy="128.6" r="6" stroke-width="2.5"/>
 <text x="333.3" y="152.6" text-anchor="middle" style="font-weight: 600">Qwen3.5-2B (local)</text>
@@ -49,6 +49,9 @@
 <text class="muted" x="728.0" y="248.2" text-anchor="end" style="font-size: 11px">p95 6.2 s →</text>
 <circle class="local" cx="519.4" cy="254.2" r="6" stroke-width="2.5"/>
 <text x="519.4" y="242.2" text-anchor="middle" style="font-weight: 600">Kev-4B (local)</text>
+<line x1="190.2" x2="253.5" y1="123.0" y2="123.0" class="cloud-tail" stroke-width="2" stroke-opacity="0.35"/>
+<circle class="cloud" cx="190.2" cy="123.0" r="6" stroke-width="2.5"/>
+<text x="180.2" y="113.0" text-anchor="end" style="font-weight: 600">Elephant 9B (cloud)</text>
 <line x1="217.2" x2="326.5" y1="92.3" y2="92.3" class="cloud-tail" stroke-width="2" stroke-opacity="0.35"/>
 <circle class="cloud" cx="217.2" cy="92.3" r="6" stroke-width="2.5"/>
 <text x="217.2" y="80.3" text-anchor="middle" style="font-weight: 600">Mammoth 27B (cloud)</text>
