@@ -25,7 +25,9 @@ Then pick a provider with `/auto-compact setup`. Until then the mod does nothing
 ## Providers
 
 - **Spisev (local)**: `/auto-compact setup` asks before downloading the GGUF (about 1.9 GB)
-  and starts `llama-server` on 127.0.0.1 with `-hf`, for the rest of the session. It needs
+  and starts `llama-server` on 127.0.0.1 with `-hf`, for the rest of the session. The GGUF is
+  not on Hugging Face yet: until it is, export it (training/README.md) and point
+  `AUTO_COMPACT_MODEL` at the `.gguf` file. It needs
   llama.cpp build 11361 or later (`llama-server` or `llama` on your PATH, or
   `AUTO_COMPACT_LLAMA_SERVER`). A `.gguf` path in `AUTO_COMPACT_MODEL` is served with `-m`.
 - **Mammoth (Baseten)** or **Jev (OpenCode Zen)**: setup saves the endpoint and model; the
@@ -88,7 +90,18 @@ clip, summarize and ask alike.
 
 ## Benchmark
 
-See [training/README.md](training/README.md#results).
+345 prompts from 95 held-out sessions, Mammoth as the reference; local models served by
+llama-server b11669 on an M4 Pro, one request at a time
+([training/README.md](training/README.md#results) has the details and the method):
+
+| Model | Agrees with Mammoth | Same action | Precision of `independent` | Latency p50 / p95 |
+| :- | -: | -: | -: | -: |
+| **Spisev** (spisev-alpha, Qwen3-1.7B, 1.8 GB) | 84.1% | 95.4% | 100% (n=61) | 145 / 2618 ms |
+| Qwen3.5-2B, same recipe | 84.3% | 95.4% | 100% (n=60) | 441 / 1938 ms |
+| Mammoth (Baseten) | reference | reference | 100% (n=67) | 225 / 415 ms |
+
+The two local candidates are statistically tied (exact McNemar p = 1.00); Spisev is three
+times faster.
 
 ## Development
 
