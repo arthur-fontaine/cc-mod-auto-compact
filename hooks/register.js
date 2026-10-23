@@ -251,6 +251,20 @@ async function startSpisev($, config) {
   return current.state
 }
 
+// The first prompt of a session usually comes while llama-server loads the model (a few seconds):
+// wait for it a little rather than skip the decision. A download is never waited for.
+const START_WAIT_MS = 10_000
+
+async function spisevReady($, config) {
+  let state = await startSpisev($, config)
+  for (let waited = 0; state === 'starting' && waited < START_WAIT_MS; waited += 250) {
+    await $.clock.sleep(250)
+    state = server?.state ?? 'stopped'
+    if (state === 'starting' && (await isServing($, config))) state = server.state = 'ready'
+  }
+  return state
+}
+
 async function askProvider($, config, state) {
   const model = config.provider === 'spisev' ? SPISEV.alias : config.model
   const call = $.http.fetch(config.endpoint, {
@@ -310,7 +324,7 @@ async function onPrompt($, e) {
     debug($, '[auto-compact] summaries catching up (' + error.message + ' not built) → keep')
     return
   }
-  if (config.provider === 'spisev' && (await startSpisev($, config)) !== 'ready') {
+  if (config.provider === 'spisev' && (await spisevReady($, config)) !== 'ready') {
     debug($, '[auto-compact] Spisev ' + server.state + ' → keep')
     return
   }
