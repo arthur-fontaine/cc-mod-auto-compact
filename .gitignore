@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+training/data/
+training/runs/
+*.gguf
+.venv/
+__pycache__/
+node_modules/
+.claude-plugin/types/
+tsconfig.json
+.claude/settings.local.json
+training/.hf/
+training/external/
+training/logs/
+training/cloud/dist/
+training/results/*.predictions.jsonl

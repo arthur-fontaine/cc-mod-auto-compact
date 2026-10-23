@@ -1,0 +1,18 @@
+{
+  "name": "spisev",
+  "displayName": "Spisev",
+  "version": "0.1.0",
+  "description": "Spots task boundaries in Claude Code sessions and suggests compacting or clearing the context",
+  "author": {
+    "name": "Arthur Fontaine"
+  },
+  "repository": "https://github.com/arthur-fontaine/cc-mod-auto-compact",
+  "license": "MIT",
+  "keywords": [
+    "compaction",
+    "context",
+    "systemone",
+    "mod"
+  ],
+  "types": "./types/index.d.ts"
+}

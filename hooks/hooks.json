@@ -1,0 +1,4 @@
+{
+  "description": "spisev hooks module",
+  "modules": ["./register.js"]
+}
