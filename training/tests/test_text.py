@@ -36,6 +36,7 @@ class ClipTest(unittest.TestCase):
     def test_estimate_is_an_upper_bound_of_bytes_over_three(self):
         self.assertEqual(estimate_tokens(""), 0)
         self.assertEqual(estimate_tokens("abcd"), 2)
+        self.assertEqual(estimate_tokens("a,b,c"), 5)
 
 
 class SharedClipTest(unittest.TestCase):

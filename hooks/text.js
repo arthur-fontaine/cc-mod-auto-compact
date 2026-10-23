@@ -20,8 +20,11 @@ export function utf8Len(text) {
   return encoder.encode(text).length
 }
 
+// Never below one token per word, digit, whitespace run or other character: code runs near 2 bytes a token.
+const PIECES = /[A-Za-z]+|[0-9]|\s+|[^A-Za-z0-9\s]/gu
+
 export function estimateTokens(text) {
-  return Math.ceil(utf8Len(text) / BYTES_PER_TOKEN)
+  return Math.max(Math.ceil(utf8Len(text) / BYTES_PER_TOKEN), (text.match(PIECES) ?? []).length)
 }
 
 function head(chars, limit) {

@@ -6,7 +6,8 @@ group and render a session the same way.
 
 - `clip` keeps both ends of a text within a byte budget and a token budget.
 - `estimate_tokens` is a deterministic upper estimate of Qwen3.5 tokens (Mammoth is a
-  Qwen3.5-27B), checked against the real tokenizer in tests/test_text.py.
+  Qwen3.5-27B): the larger of bytes / 3 and a count of words, digits, whitespace runs and
+  other characters, checked against the real tokenizer in tests/test_text.py.
 - `messages` turns transcript rows ($.session.messages() shape: role, text, toolUses)
   into the tree's messages: each human prompt, and everything the agent did between two
   prompts as one `agent` message. Tool results are dropped.
@@ -33,8 +34,13 @@ def utf8_len(text):
     return len(text.encode("utf-8"))
 
 
+# Code and punctuation run near 2 bytes per token, so the estimate is also never below one
+# token per word, digit, whitespace run and other character (hooks/text.js uses the same regex).
+PIECES = re.compile(r"[A-Za-z]+|[0-9]|\s+|[^A-Za-z0-9\s]")
+
+
 def estimate_tokens(text):
-    return math.ceil(utf8_len(text) / BYTES_PER_TOKEN)
+    return max(math.ceil(utf8_len(text) / BYTES_PER_TOKEN), len(PIECES.findall(text)))
 
 
 def _head(chars, limit):
