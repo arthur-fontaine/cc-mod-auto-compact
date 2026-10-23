@@ -54,7 +54,7 @@
 <text x="217.2" y="80.3" text-anchor="middle" style="font-weight: 600">Mammoth 27B (cloud)</text>
 <text x="72" y="26" style="font-size: 16px; font-weight: 600">Right action against latency</text>
 <text x="402" y="452" text-anchor="middle" class="muted">Latency per decision: median, line to p95 (log scale)</text>
-<text transform="translate(18 231) rotate(-90)" text-anchor="middle" class="muted">Right action, 418 held-out prompts</text>
+<text transform="translate(18 231) rotate(-90)" text-anchor="middle" class="muted">Right action, 418 held-out decisions</text>
 <circle class="local" cx="502" cy="21" r="5" stroke-width="2"/>
 <text x="512" y="25" class="muted">Local (M4 Pro, llama.cpp)</text>
 <circle class="cloud" cx="672" cy="21" r="5" stroke-width="2"/>

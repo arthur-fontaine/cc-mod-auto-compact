@@ -292,7 +292,7 @@ scores every model, Mammoth included, on an answer key none of them wrote.
 and Opus 5.5 each label the held-out test prompts and the held-out splices, ten per request,
 through `claude -p` isolated like the summarizer (safe mode, no setting sources, tools, MCP
 servers or slash commands, API keys stripped). They see what the classifier sees plus
-hindsight: the last 8 messages in full, the agent's next turn, the developer's next 3
+hindsight: the last 8 messages (up to 1,200 bytes each), the agent's next turn, the developer's next 3
 prompts and the hindsight stats from extract. Of the 434 points both labeled, they agree on
 the category for 379 (87.3%) and on the action for 418 (96.3%: 321 keep, 31 compact, 66
 clear). The 418 form the key. On the subscription this billed $0; the list-price equivalent

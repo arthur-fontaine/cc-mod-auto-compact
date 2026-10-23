@@ -106,7 +106,7 @@ def svg():
     out.append(f'<text x="{(LEFT + W - RIGHT) / 2:.0f}" y="{H - 18}" text-anchor="middle" class="muted">'
                'Latency per decision: median, line to p95 (log scale)</text>')
     out.append(f'<text transform="translate(18 {(TOP + H - BOTTOM) / 2:.0f}) rotate(-90)" text-anchor="middle" '
-               f'class="muted">Right action, {n} held-out prompts</text>')
+               f'class="muted">Right action, {n} held-out decisions</text>')
 
     lx = W - RIGHT - 230
     out.append(f'<circle class="local" cx="{lx}" cy="21" r="5" stroke-width="2"/>')

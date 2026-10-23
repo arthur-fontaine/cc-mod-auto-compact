@@ -96,7 +96,7 @@ clip, summarize and ask alike.
 held-out splices (the end of one session followed by the first prompt of another, where the
 context should go). None of these sessions was used for training or to pick a checkpoint. The
 answer key is the action two Claude teachers, Sonnet 5.5 and Opus 5.5, agreed on after seeing
-what the classifier sees plus hindsight: the recent messages in full, what the agent did next
+what the classifier sees plus hindsight: the last 8 messages, what the agent did next
 and the developer's following prompts. They agreed on 96% of the points; the rest are left
 out. Always keeping the context gets 76.8% right.
 
