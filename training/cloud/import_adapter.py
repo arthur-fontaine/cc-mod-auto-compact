@@ -48,7 +48,9 @@ def main():
     parser.add_argument("run", type=Path)
     parser.add_argument("--base", required=True)
     parser.add_argument("--bits", type=int, default=8)
-    parser.add_argument("--mlp-scale", type=float, default=0.5, help="Factor on the MLP adapters' declared scaling")
+    parser.add_argument("--mlp-scale", type=float, help="Factor on the MLP adapters' declared scaling. Default: 0.5 "
+                                                        "for Qwen3.5 (Unsloth's fused MLP path), 1.0 otherwise: a "
+                                                        "Qwen3-1.7B adapter reproduces its dev agreement only as declared")
     parser.add_argument("--max-gap", type=float, default=0.03, help="Allowed dev agreement gap with training")
     parser.add_argument("--bundle", default="spisev", help="The cloud/dist bundle the run trained on")
     parser.add_argument("--skip-mlx", action="store_true", help="Stop after the merge (on a GPU host without MLX)")
@@ -60,7 +62,10 @@ def main():
     merged_dir, mlx_dir = args.run / "merged", args.run / f"fused-{args.bits}bit"
     base_path = snapshot_download(args.base)
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-    multimodal = "vision_config" in AutoConfig.from_pretrained(base_path).to_dict()
+    config = AutoConfig.from_pretrained(base_path).to_dict()
+    multimodal = "vision_config" in config
+    if args.mlp_scale is None:
+        args.mlp_scale = 0.5 if config.get("model_type", "").startswith("qwen3_5") else 1.0
     auto = AutoModelForImageTextToText if multimodal else AutoModelForCausalLM
     model = auto.from_pretrained(base_path, dtype=torch.bfloat16).to(device)
     model = PeftModel.from_pretrained(model, adapter).eval()
