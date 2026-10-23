@@ -33,7 +33,7 @@ def main():
     parser.add_argument("--a", default="qwen3-1.7b")
     parser.add_argument("--b", default="qwen3.5-2b")
     parser.add_argument("--mammoth", default="mammoth")
-    parser.add_argument("--labels", nargs=3, default=["Qwen3-1.7B (MLX LoRA), GGUF Q8_0",
+    parser.add_argument("--labels", nargs=3, default=["Qwen3-1.7B (Unsloth LoRA, RunPod RTX 5090), GGUF Q8_0",
                                                       "Qwen3.5-2B (Unsloth LoRA, Colab T4 + RunPod 3090), GGUF Q8_0",
                                                       "Mammoth (Baseten, reference)"])
     args = parser.parse_args()

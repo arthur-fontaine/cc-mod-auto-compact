@@ -157,25 +157,28 @@ trains on the pick alone). Nisev's recipe: LoRA rank 16 / alpha 32, loss on the 
 position only, AdamW 1e-4, cosine decay, clipping at 1, best epoch on dev.
 
 ```sh
-# Qwen3-1.7B on this Mac with mlx-lm
-uv run python pipeline/train.py --base Qwen/Qwen3-1.7B --out runs/qwen3-1.7b --epochs 3
-uv run python pipeline/select_checkpoint.py runs/qwen3-1.7b
-uv run python pipeline/fuse.py runs/qwen3-1.7b
-uv run python pipeline/calibrate.py runs/qwen3-1.7b/fused-8bit
+uv run python pipeline/dataset.py                      # data/split/{train,dev,test}.jsonl
 
-# Qwen3.5-2B on a free Colab T4 with Unsloth
-uv run python cloud/pack.py
-uv run python cloud/colab_train.py --base unsloth/Qwen3.5-2B --name qwen3.5-2b
-uv run --group merge python cloud/import_adapter.py runs/cloud/qwen3.5-2b --base Qwen/Qwen3.5-2B
-uv run python pipeline/calibrate.py runs/cloud/qwen3.5-2b/fused-8bit
+# Qwen3.5-2B and Qwen3-1.7B with Unsloth on one CUDA GPU (a free Colab T4, or any pod)
+uv run python cloud/pack.py                                                  # Qwen3.5 tokenizer
+uv run python cloud/pack.py --tokenizer Qwen/Qwen3-1.7B --name spisev-qwen3  # Qwen3 tokenizer
+uv run python cloud/colab_train.py --base unsloth/Qwen3.5-2B --name qwen3.5-2b  # Colab; or on a pod:
+python3 train_unsloth.py --base unsloth/Qwen3-1.7B --out runs/qwen3-1.7b --epochs 3
+uv run --group merge python cloud/import_adapter.py runs/cloud/qwen3-1.7b --base Qwen/Qwen3-1.7B --bundle spisev-qwen3
+uv run python pipeline/calibrate.py runs/cloud/qwen3-1.7b/fused-8bit
+
+# or Qwen3-1.7B on this Mac with mlx-lm (same recipe; see Results for why the alpha was not)
+uv run python pipeline/train.py --base Qwen/Qwen3-1.7B --out runs/qwen3-1.7b --epochs 3
+uv run python pipeline/select_checkpoint.py runs/qwen3-1.7b && uv run python pipeline/fuse.py runs/qwen3-1.7b
 
 # the chosen one as a llama.cpp decision model
-uv run --group merge python pipeline/export_gguf.py runs/qwen3-1.7b/fused --calibrated runs/qwen3-1.7b/fused-8bit \
-    --llama-cpp external/llama.cpp --name spisev-alpha-1.7b
-llama-server -m runs/qwen3-1.7b/spisev-alpha-1.7b-Q8_0.gguf --port 8766 --alias spisev-alpha -c 16384
+uv run --group merge python pipeline/export_gguf.py runs/cloud/qwen3-1.7b/merged \
+    --calibrated runs/cloud/qwen3-1.7b/fused-8bit --name spisev-alpha-1.7b
+llama-server -m runs/cloud/qwen3-1.7b/spisev-alpha-1.7b-Q8_0.gguf --port 8766 --alias spisev-alpha -c 16384
 
 # section 11: both candidates and Mammoth on the held-out sessions
 uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8766/v1/systemone --name qwen3-1.7b
+uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8766/v1/systemone --name qwen3-1.7b-splices --split test-splices
 uv run python pipeline/evaluate.py --mammoth --name mammoth
 uv run python pipeline/alpha_report.py
 ```
@@ -188,8 +191,10 @@ uv run python pipeline/alpha_report.py
   files and the trainer go to Colab, never `.env`. The VM checkpoints every 50 steps, and
   rerunning the same command resumes from the last one. Never run the Colab CLI at debug
   level: its log can hold OAuth tokens.
-- `cloud/import_adapter.py` applies Unsloth's MLP-scaling fix and refuses to export when the
-  merged model's dev agreement with Mammoth moves more than 3 points from training.
+- `cloud/import_adapter.py` applies Unsloth's MLP-scaling fix (half scale, Qwen3.5 only: a
+  Qwen3-1.7B adapter scored 83.1% on dev at half scale and 85.7% as declared, against 86.1%
+  in training) and refuses to export when the merged model's dev agreement with Mammoth moves
+  more than 3 points from training. It merges on a CUDA host when there is one.
 - `export_gguf.py` writes the `openjev` decision type, the calibrated temperature and a
   `systemone` template that renders exactly the training prompt (checked against the real
   Qwen chat templates in `tests/test_gguf_template.py`; llama-server counts the same tokens
@@ -197,4 +202,82 @@ uv run python pipeline/alpha_report.py
 
 ## Results
 
-Filled in by the runs below.
+### Data and labels
+
+The full public run (`pipeline/report.py`, served version `q46n67k` of
+`decision-models/baseten-mammoth-27b-latest`):
+
+| Step | Count |
+| :- | -: |
+| Sessions extracted (Claude Code, Pi, Codex; 2.6 GB of the 431 datasets downloaded) | 4,781 |
+| Kept after cleaning (833 flattened, 1,316 scripted openings, 753 exact and 274 fork duplicates dropped) | 1,605 |
+| Decision points: train / dev / test (sessions 714 / 69 / 95) | 3,612 / 266 / 345 |
+| of which synthetic splices (train only) | 471 |
+| Summary nodes built by Haiku (11,418 calls) | 8,156 |
+| Points labeled by Mammoth | 4,223 |
+
+Spend: Haiku $8.53 at list price, billed $0.00 (Claude subscription); Mammoth 4,237 calls and
+6.3M input tokens, billed $0.00 (free week). `MAX_SPEND_USD` was 0 throughout.
+
+Mammoth's picks on train: continuation 51.3%, follow_up 29.8%, related 7.8%, independent
+9.8%, return 1.4%; on test 53.0 / 40.9 / 5.5 / 0.6 / 0.0%. Its confidence (the probability of
+its pick) is above 0.7 on 63% of points. Against the weak labels, 89.2% of spliced prompts
+come out independent or related, every short acknowledgement (22) continuation, and the
+precision of `independent` is 1.0 (289 points). The floors on test: always `continuation`
+agrees with Mammoth on 53.0%; TF-IDF + logistic regression trained on the weak labels on
+4.6% (the weak labels cover only two classes).
+
+### spisev-alpha
+
+Both candidates were trained with the same recipe, data and Unsloth trainer, 3 epochs, best
+epoch on dev (agreement with Mammoth):
+
+- **Qwen3.5-2B**: on a free Colab T4 until the session was reclaimed at step 1,150 of 1,350,
+  then from that checkpoint on a RunPod RTX 3090 (bf16, the T4's fp16 scaler dropped). Dev
+  agreement by epoch 84.2 / 87.6 / 87.2%: epoch 2. LoRA on all 12 linear-layer names (186
+  modules); after the merge, 86.8% on dev against 87.6% in training.
+- **Qwen3-1.7B**: on a RunPod RTX 5090. Epochs 2 and 3: 83.5 / 86.1%, epoch 3 (epoch 1's
+  checkpoint was pruned by the trainer's keep-two limit when its evaluation failed on a
+  9,327-token dev example, since fixed with a 12k window, so it could not be scored). After
+  the merge, 85.7% on dev against 86.1%.
+
+The MLX path trained Qwen3-1.7B for two epochs on this Mac (M4 Pro, 24 GB) at about 3 s an
+iteration, 9 hours for three, and ran out of memory once beside another model; the alpha was
+moved to RunPod to finish the same day (both pods together under $1).
+
+Temperature calibration on dev (fitted on Mammoth's soft distribution): 1.10 for both;
+dev soft cross-entropy 0.820 → 0.817 for both; calibration error against Mammoth's pick
+0.156 → 0.174 (Qwen3.5-2B) and 0.135 → 0.162 (Qwen3-1.7B). Mammoth's own probabilities are
+spread (its calibration error against its own pick is 0.257), so a student that matches its
+distribution is not calibrated to agreement; the threshold in auto mode (0.85) is set
+accordingly high.
+
+### Section 11: held-out sessions, Mammoth as reference
+
+345 test points from 95 sessions never used in training or checkpoint selection, each model
+served as a GGUF Q8_0 by llama-server b11669 on an M4 Pro, one request at a time; Mammoth over
+the network. The precision of `independent` is measured on 90 splices built from test
+sessions only for evaluation, since the test split holds almost no weak label.
+
+| Model | Top-1 agreement with Mammoth | KL to Mammoth | Calibration error | Precision of `independent` (held-out splices) | Action agreement | Latency p50 / p95 |
+| :- | -: | -: | -: | -: | -: | -: |
+| **Qwen3-1.7B** (spisev-alpha, 1.83 GB) | 84.1% | 0.116 | 0.144 | 100.0% (n=61) | 95.4% | 145 / 2618 ms |
+| Qwen3.5-2B (2.01 GB) | 84.3% | 0.102 | 0.162 | 100.0% (n=60) | 95.4% | 441 / 1938 ms |
+| Mammoth (Baseten) | reference | 0 | | 100.0% (n=67) | reference | 225 / 415 ms |
+
+Exact McNemar test on agreement with Mammoth, point by point (n = 345): 15 points only
+Qwen3-1.7B agrees, 16 only Qwen3.5-2B; two-sided p = 1.00. On the held-out splices both agree
+with Mammoth on 82.2%.
+
+**Recommendation.** Qwen3-1.7B becomes spisev-alpha. The two candidates are statistically
+indistinguishable on everything the mod acts on: top-1 agreement (84.1% against 84.3%,
+McNemar p = 1.00), action agreement (95.4% each) and the precision of `independent` (100% on
+the held-out splices for both). The 1.7B answers three times faster at the median (145 ms
+against 441 ms on this Mac, faster than a round trip to Mammoth), is 10% smaller, is better
+calibrated (0.144 against 0.162), and runs on llama.cpp's mature dense Qwen3 path rather than
+the newer Gated DeltaNet one, whose GGUF conversion warned about a value cast. Its p95 (2.6 s)
+comes from the longest states (8–9k tokens of prefill); the mod's 4 s timeout keeps the
+context when it is exceeded. Both trail Mammoth by about 16 points of agreement; 71% of
+the 1.7B's 55 disagreements (39) are between `continuation` and `follow_up`, which the policy
+treats alike (keep), which is why the action agreement is 95%. The next largest share is
+`follow_up` against `related` (10), the case where suggest mode asks before compacting.
