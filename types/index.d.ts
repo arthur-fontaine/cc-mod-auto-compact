@@ -1,7 +1,7 @@
-export type SpisevLabel = string | null
+export type AutoCompactLabel = string | null
 
 declare module 'claude-code' {
   interface PluginState {
-    spisev: { label: SpisevLabel }
+    'auto-compact': { label: AutoCompactLabel }
   }
 }

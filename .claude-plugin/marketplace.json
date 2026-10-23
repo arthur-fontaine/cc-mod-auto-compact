@@ -1,14 +1,14 @@
 {
-  "name": "spisev-dev",
+  "name": "auto-compact-dev",
   "owner": {
     "name": "Arthur Fontaine"
   },
-  "description": "Development marketplace for the spisev mod",
+  "description": "Development marketplace for the auto-compact mod",
   "plugins": [
     {
-      "name": "spisev",
+      "name": "auto-compact",
       "source": "./",
-      "description": "Suggests compacting or clearing the context when a prompt starts a new task"
+      "description": "Lets a decision model offer to compact or clear the context when a prompt starts a new task"
     }
   ]
 }

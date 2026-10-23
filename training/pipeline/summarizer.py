@@ -32,6 +32,7 @@ from config import REPO, load_env  # noqa: E402
 PROMPT_FILE = REPO / "prompts" / "compact.md"
 DEFAULT_MODEL = "claude-haiku-5-5"
 DEFAULT_EFFORT = "low"
+MAX_TOKENS = 4096  # the reply's cap, as hooks/summarizer.js passes maxTokens
 API_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 # List price, USD per million tokens (claude-haiku-5-5, prompts up to 100K tokens).
 PRICE = {"claude-haiku-5-5": (0.10, 0.50)}
@@ -68,22 +69,29 @@ def auth_mode():
     return "API" if use_api() and any(os.environ.get(v) for v in API_VARS) else "subscription"
 
 
-def sdk_env():
+def request(prompt):
+    """The call, as $.model.complete takes it in the mod: the same fields and values."""
+    s = settings()
+    return {"model": s["model"], "system": system_prompt(), "prompt": prompt, "effort": s["effort"],
+            "maxTokens": MAX_TOKENS}
+
+
+def sdk_env(max_tokens=MAX_TOKENS):
     """What the SDK subprocess sees: this process's environment, API credentials stripped."""
     if not use_api():
         for var in API_VARS:
             os.environ.pop(var, None)
-    return {"CLAUDE_AGENT_SDK_CLIENT_APP": "spisev-summarizer/0.1"}
+    return {"CLAUDE_AGENT_SDK_CLIENT_APP": "spisev-summarizer/0.1", "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(max_tokens)}
 
 
-def options(cwd):
+def options(cwd, req=None):
     from claude_agent_sdk import ClaudeAgentOptions
 
-    s = settings()
+    req = req or request("")
     return ClaudeAgentOptions(
-        model=s["model"],
-        effort=s["effort"],
-        system_prompt=system_prompt(),
+        model=req["model"],
+        effort=req["effort"],
+        system_prompt=req["system"],
         setting_sources=[],
         mcp_servers={},
         strict_mcp_config=True,
@@ -93,7 +101,7 @@ def options(cwd):
         skills=[],
         max_turns=1,
         cwd=cwd,
-        env=sdk_env(),
+        env=sdk_env(req["maxTokens"]),
         extra_args={"safe-mode": None, "disable-slash-commands": None, "no-session-persistence": None},
     )
 
@@ -112,8 +120,9 @@ async def complete(prompt):
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, query
 
     text, usage, error = "", {}, None
+    req = request(prompt)
     with tempfile.TemporaryDirectory() as cwd:
-        async for message in query(prompt=prompt, options=options(cwd)):
+        async for message in query(prompt=req["prompt"], options=options(cwd, req)):
             if isinstance(message, AssistantMessage):
                 if getattr(message, "error", None):
                     error = str(message.error)
