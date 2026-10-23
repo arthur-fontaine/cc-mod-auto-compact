@@ -1,0 +1,17 @@
+{
+ "name": "kev-4b",
+ "split": "test",
+ "n": 345,
+ "agreement": 0.6260869565217392,
+ "kl": 0.4875813463022625,
+ "ece": 0.24449592072022758,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.863768115942029,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 1247.6352080120705,
+  "p95": 6299.382959026843,
+  "max": 20803.185958007816
+ }
+}

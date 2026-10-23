@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 470" width="760" height="470" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<style>
+  .bg { fill: #ffffff; } text { fill: #1f2328; font-size: 13px; } .muted { fill: #656d76; font-size: 12px; }
+  .grid { stroke: #d8dee4; } .default { stroke: #656d76; }
+  .zone { fill: #dafbe1; stroke: #1a7f37; } text.goal { fill: #1a7f37; }
+  .local { fill: #0969da; stroke: #0969da; } .cloud { fill: #ffffff; stroke: #8250df; }
+  .local-tail { stroke: #0969da; } .cloud-tail { stroke: #8250df; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #0d1117; } text { fill: #e6edf3; } .muted { fill: #8d96a0; }
+    .grid { stroke: #30363d; } .default { stroke: #8d96a0; }
+    .zone { fill: #12261e; stroke: #3fb950; } text.goal { fill: #3fb950; }
+    .local { fill: #4493f8; stroke: #4493f8; } .cloud { fill: #0d1117; stroke: #ab7df8; }
+    .local-tail { stroke: #4493f8; } .cloud-tail { stroke: #ab7df8; }
+  }
+</style>
+<rect class="bg" width="760" height="470"/>
+<rect x="72" y="56" width="248.0" height="228.9" class="zone" stroke-dasharray="4 3"/>
+<text x="82" y="254.9" class="goal" style="font-weight: 600">Where we want to be</text>
+<text x="82" y="271.9" class="goal" style="font-size: 12px">fast and accurate</text>
+<text x="82" y="299.9" class="goal" style="font-size: 11px">≥ 80.4%: beats always keeping, p &lt; 0.05</text>
+<text x="82" y="313.9" class="goal" style="font-size: 11px">&lt; 400 ms: the Doherty threshold</text>
+<line class="grid" x1="72.0" x2="72.0" y1="56" y2="406"/>
+<text class="muted" x="72.0" y="424" text-anchor="middle">100 ms</text>
+<line class="grid" x1="196.0" x2="196.0" y1="56" y2="406"/>
+<text class="muted" x="196.0" y="424" text-anchor="middle">200 ms</text>
+<line class="grid" x1="360.0" x2="360.0" y1="56" y2="406"/>
+<text class="muted" x="360.0" y="424" text-anchor="middle">500 ms</text>
+<line class="grid" x1="484.0" x2="484.0" y1="56" y2="406"/>
+<text class="muted" x="484.0" y="424" text-anchor="middle">1 s</text>
+<line class="grid" x1="608.0" x2="608.0" y1="56" y2="406"/>
+<text class="muted" x="608.0" y="424" text-anchor="middle">2 s</text>
+<line class="grid" x1="72" x2="732" y1="406.0" y2="406.0"/>
+<text class="muted" x="64" y="410.0" text-anchor="end">70%</text>
+<line class="grid" x1="72" x2="732" y1="289.3" y2="289.3"/>
+<text class="muted" x="64" y="293.3" text-anchor="end">80%</text>
+<line class="grid" x1="72" x2="732" y1="172.7" y2="172.7"/>
+<text class="muted" x="64" y="176.7" text-anchor="end">90%</text>
+<line class="grid" x1="72" x2="732" y1="56.0" y2="56.0"/>
+<text class="muted" x="64" y="60.0" text-anchor="end">100%</text>
+<line x1="72" x2="732" y1="326.7" y2="326.7" class="default" stroke-dasharray="6 4"/>
+<text class="muted" x="726" y="342.7" text-anchor="end">always keep the context (76.8%)</text>
+<line x1="129.3" x2="654.2" y1="134.1" y2="134.1" class="local-tail" stroke-width="2" stroke-opacity="0.35"/>
+<circle class="local" cx="129.3" cy="134.1" r="6" stroke-width="2.5"/>
+<text x="129.3" y="122.1" text-anchor="middle" style="font-weight: 600">Spisev 1.7B (local)</text>
+<line x1="333.3" x2="600.0" y1="128.6" y2="128.6" class="local-tail" stroke-width="2" stroke-opacity="0.35"/>
+<circle class="local" cx="333.3" cy="128.6" r="6" stroke-width="2.5"/>
+<text x="333.3" y="152.6" text-anchor="middle" style="font-weight: 600">Qwen3.5-2B (local)</text>
+<line x1="519.4" x2="732.0" y1="254.2" y2="254.2" class="local-tail" stroke-width="2" stroke-opacity="0.35"/>
+<text class="muted" x="728.0" y="248.2" text-anchor="end" style="font-size: 11px">p95 6.2 s →</text>
+<circle class="local" cx="519.4" cy="254.2" r="6" stroke-width="2.5"/>
+<text x="519.4" y="242.2" text-anchor="middle" style="font-weight: 600">Kev-4B (local)</text>
+<line x1="217.2" x2="326.5" y1="92.3" y2="92.3" class="cloud-tail" stroke-width="2" stroke-opacity="0.35"/>
+<circle class="cloud" cx="217.2" cy="92.3" r="6" stroke-width="2.5"/>
+<text x="217.2" y="80.3" text-anchor="middle" style="font-weight: 600">Mammoth 27B (cloud)</text>
+<text x="72" y="26" style="font-size: 16px; font-weight: 600">Right action against latency</text>
+<text x="402" y="452" text-anchor="middle" class="muted">Latency per decision: median, line to p95 (log scale)</text>
+<text transform="translate(18 231) rotate(-90)" text-anchor="middle" class="muted">Right action, 418 held-out prompts</text>
+<circle class="local" cx="502" cy="21" r="5" stroke-width="2"/>
+<text x="512" y="25" class="muted">Local (M4 Pro, llama.cpp)</text>
+<circle class="cloud" cx="672" cy="21" r="5" stroke-width="2"/>
+<text x="682" y="25" class="muted">Cloud</text>
+</svg>

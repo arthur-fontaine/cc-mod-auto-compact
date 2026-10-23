@@ -1,0 +1,18 @@
+{
+ "name": "kev-4b",
+ "label": "Kev-4B (zero-shot)",
+ "where": "Local \u00b7 llama.cpp \u00b7 Q8_0, 4.5 GB",
+ "n": 418,
+ "right_action": 0.8301435406698564,
+ "kept_when_it_should": 0.8753894080996885,
+ "acted_when_it_should": 0.6804123711340206,
+ "right_action_applied": 0.7679425837320574,
+ "right_category": 0.6200527704485488,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 1218.672791001154,
+  "p95": 6225.089499988826
+ },
+ "baseline_keep": 0.7679425837320574,
+ "threshold": 0.8038277511961722
+}

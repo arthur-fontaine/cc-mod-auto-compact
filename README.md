@@ -90,18 +90,71 @@ clip, summarize and ask alike.
 
 ## Benchmark
 
-345 prompts from 95 held-out sessions, Mammoth as the reference; local models served by
-llama-server b11669 on an M4 Pro, one request at a time
-([training/README.md](training/README.md#results) has the details and the method):
+![Right action against median latency, one point per model. Spisev 1.7B and Mammoth are in the fast and accurate zone; Qwen3.5-2B sits on its latency edge and Kev-4B well outside it.](docs/benchmark.svg)
 
-| Model | Agrees with Mammoth | Same action | Precision of `independent` | Latency p50 / p95 |
-| :- | -: | -: | -: | -: |
-| **Spisev** (spisev-alpha, Qwen3-1.7B, 1.8 GB) | 84.1% | 95.4% | 100% (n=61) | 145 / 2618 ms |
-| Qwen3.5-2B, same recipe | 84.3% | 95.4% | 100% (n=60) | 441 / 1938 ms |
-| Mammoth (Baseten) | reference | reference | 100% (n=67) | 225 / 415 ms |
+**The test**: 418 decisions, from 334 held-out prompts of 94 real coding sessions plus 84
+held-out splices (the end of one session followed by the first prompt of another, where the
+context should go). None of these sessions was used for training or to pick a checkpoint. The
+answer key is the action two Claude teachers, Sonnet 5.5 and Opus 5.5, agreed on after seeing
+what the classifier sees plus hindsight: the recent messages in full, what the agent did next
+and the developer's following prompts. They agreed on 96% of the points; the rest are left
+out. Always keeping the context gets 76.8% right.
 
-The two local candidates are statistically tied (exact McNemar p = 1.00); Spisev is three
-times faster.
+**The setup**: each model got the request the mod sends it, one at a time. The local models
+ran in llama.cpp b11669 on an Apple M4 Pro with 24 GB. Mammoth's latency includes the round
+trip from that Mac to Baseten.
+
+**The green zone** is where a decision model should be. Both edges are set by a rule, not
+read off the results:
+
+- **Fast**: under 400 ms at the median, the
+  [Doherty threshold](https://lawsofux.com/doherty-threshold/), below which people stay
+  engaged instead of waiting. The mod asks before every prompt, so this is time added to
+  each one.
+- **Accurate**: at least 80.4%, the lowest score that beats always keeping the context by
+  more than chance on these points (one-sided exact binomial test, p < 0.05), computed by
+  [`benchmark.py`](training/pipeline/benchmark.py).
+
+| Model | Runs | Right action | Kept when it should | Acted when it should | Right action, auto mode | Right category | Latency p50 / p95 |
+| :- | :- | -: | -: | -: | -: | -: | -: |
+| **Spisev 1.7B** | Local · llama.cpp · Q8_0, 1.8 GB | 93.3% | 97.5% | 79.4% | 87.1% | 81.5% | 138 / 2590 ms |
+| Qwen3.5-2B, same recipe | Local · llama.cpp · Q8_0, 2.0 GB | 93.8% | 97.2% | 82.5% | 87.8% | 83.6% | 431 / 1913 ms |
+| Kev-4B | Local · llama.cpp · Q8_0, 4.5 GB | 83.0% | 87.5% | 68.0% | 76.8% | 62.0% | 1219 / 6225 ms |
+| Mammoth 27B | Cloud · Baseten | 96.9% | 98.4% | 91.8% | 91.9% | 86.8% | 225 / 415 ms |
+| Always keep | | 76.8% | 100% | 0% | 76.8% | | |
+
+- **Right action**: the model's category, through the [policy](#how-it-decides), leads to
+  the teachers' action: keep, compact or clear.
+- **Kept when it should**: of the 321 points where the teachers keep the context, how many
+  the model keeps. A miss here is the costly one: it drops context the agent needed.
+- **Acted when it should**: of the 97 points where the teachers compact or clear, how many
+  the model handles the same way.
+- **Right action, auto mode**: what the mod ends up doing in auto mode. It acts only at a
+  confidence of 0.85 or more, and otherwise keeps the context.
+- **Right category**: the exact category, on the 379 points where the teachers also agreed
+  on it.
+
+What stands out:
+
+- **Every model beats always keeping**, compared point by point (one-sided exact McNemar
+  test): Spisev, Qwen3.5-2B and Mammoth at p < 0.0001, Kev at p = 0.007.
+- **Spisev and Qwen3.5-2B are tied**: 11 points only Spisev gets right, 13 only Qwen3.5-2B
+  (p = 0.84). Spisev answers three times faster at the median, which is why it is the
+  default.
+- **Mammoth is ahead of Spisev** (6 points against 21, p = 0.006), as expected: it is the
+  teacher Spisev was distilled from, at 16 times the size. It needs the network and a
+  Baseten key; Spisev runs on the Mac.
+- **Kev drops context it should keep**: it compacts or clears 12.5% of the prompts the
+  teachers keep, five times as often as Spisev. It is never confident enough for auto mode
+  (no answer at 0.85 or more, median 0.38), so in auto mode it does exactly what always
+  keeping does. It answers zero-shot; it was trained for [auto-effort](https://github.com/arthur-fontaine/cc-mod-auto-effort)'s question,
+  not this one.
+- **Spisev's p95 is 2.6 s**: the longest states take 8 to 9k tokens of prefill. Past the
+  4 s timeout the mod keeps the context.
+
+To rerun it, run `uv run python pipeline/benchmark.py` then `uv run python pipeline/plot.py`
+in [`training/`](training/README.md#benchmark), which also explains how the answer key and
+Spisev were built.
 
 ## Development
 

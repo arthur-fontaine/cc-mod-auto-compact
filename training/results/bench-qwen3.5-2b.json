@@ -1,0 +1,18 @@
+{
+ "name": "qwen3.5-2b",
+ "label": "Qwen3.5-2B (same recipe)",
+ "where": "Local \u00b7 llama.cpp \u00b7 Q8_0, 2.0 GB",
+ "n": 418,
+ "right_action": 0.937799043062201,
+ "kept_when_it_should": 0.9719626168224299,
+ "acted_when_it_should": 0.8247422680412371,
+ "right_action_applied": 0.8779904306220095,
+ "right_category": 0.8364116094986808,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 430.78162500751205,
+  "p95": 1912.6892080239486
+ },
+ "baseline_keep": 0.7679425837320574,
+ "threshold": 0.8038277511961722
+}

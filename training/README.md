@@ -281,3 +281,44 @@ context when it is exceeded. Both trail Mammoth by about 16 points of agreement;
 the 1.7B's 55 disagreements (39) are between `continuation` and `follow_up`, which the policy
 treats alike (keep), which is why the action agreement is 95%. The next largest share is
 `follow_up` against `related` (10), the case where suggest mode asks before compacting.
+
+### Benchmark
+
+The section 11 table measures agreement with Mammoth, which is the teacher the students copy,
+so it cannot rank Mammoth itself. The benchmark in the [root README](../README.md#benchmark)
+scores every model, Mammoth included, on an answer key none of them wrote.
+
+**The answer key** comes from [`pipeline/hindsight.py`](pipeline/hindsight.py): Sonnet 5.5
+and Opus 5.5 each label the held-out test prompts and the held-out splices, ten per request,
+through `claude -p` isolated like the summarizer (safe mode, no setting sources, tools, MCP
+servers or slash commands, API keys stripped). They see what the classifier sees plus
+hindsight: the last 8 messages in full, the agent's next turn, the developer's next 3
+prompts and the hindsight stats from extract. Of the 434 points both labeled, they agree on
+the category for 379 (87.3%) and on the action for 418 (96.3%: 321 keep, 31 compact, 66
+clear). The 418 form the key. On the subscription this billed $0; the list-price equivalent
+was $7.69 for Sonnet and $15.61 for Opus.
+
+**The predictions** come from `evaluate.py`, one request at a time against llama-server. Kev-4B
+is [auto-effort](https://github.com/arthur-fontaine/cc-mod-auto-effort)'s decision model,
+asked this question zero-shot through the same System One request. Mammoth's test answers
+come from `evaluate.py --mammoth`; on the splices it reuses the teacher labels, which were
+asked the same way. Latency comes from the test runs only; a failed request would count as
+keep, as in the mod, and none failed.
+
+```sh
+uv run python pipeline/hindsight.py --teacher claude-sonnet-5-5 [--splices]
+uv run python pipeline/hindsight.py --teacher claude-opus-5-5 [--splices]
+uv run python pipeline/hindsight.py --gold
+llama-server -m Kev-4B-Q8_0.gguf --port 8767 -c 16384
+uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8767/v1/systemone --api-model kev-4b --name kev-4b
+uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8767/v1/systemone --api-model kev-4b \
+  --split test-splices --name kev-4b-splices
+uv run python pipeline/benchmark.py     # results/bench-*.json, the table and the McNemar tests
+uv run python pipeline/plot.py          # ../docs/benchmark.svg
+```
+
+The accuracy edge of the chart's green zone is computed, not chosen: the smallest score a
+one-sided exact binomial test puts above always keeping (76.8% on these 418 points) at
+p < 0.05, which is 80.4%. Kev's run on the test split shared the Mac with the hindsight
+jobs for part of its duration, so its latency may read slightly high; those jobs were
+`claude -p` processes waiting on the network.
