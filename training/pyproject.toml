@@ -1,0 +1,18 @@
+[project]
+name = "spisev-training"
+version = "0.1.0"
+description = "Data pipeline, Mammoth labels, review site and distillation of spisev-alpha"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "claude-agent-sdk>=0.1",
+  "huggingface_hub>=0.34",
+  "mlx-lm>=0.31",
+  "numpy",
+  "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+# The TF-IDF floor in pipeline/report.py and the McNemar test in pipeline/evaluate.py.
+dev = ["scikit-learn", "scipy"]
+# Only for cloud/import_adapter.py and pipeline/export_gguf.py (CPU merge, GGUF writer).
+merge = ["torch", "peft", "accelerate", "torchvision", "sentencepiece"]
