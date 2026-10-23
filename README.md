@@ -7,7 +7,7 @@ up on it, starts a related task, starts an unrelated one, or returns to an earli
 follow-up keeps everything; a related task is worth a compaction that keeps the general
 picture; an unrelated one is worth a `/clear`.
 
-The local model is **Spisev** (spisev-alpha), a small model distilled from Baseten's Mammoth
+The local model is **[Spisev](https://huggingface.co/arthur-fontaine/spisev-alpha-GGUF)** (spisev-alpha), a small model distilled from Baseten's Mammoth
 that runs on your machine with llama.cpp; any System One endpoint (Mammoth, Jev) works too.
 
 ## Install
@@ -24,11 +24,9 @@ Then pick a provider with `/auto-compact setup`. Until then the mod does nothing
 
 ## Providers
 
-- **Spisev (local)**: `/auto-compact setup` asks before downloading the GGUF (about 1.9 GB)
-  and starts `llama-server` on 127.0.0.1 with `-hf`, for the rest of the session. The GGUF is
-  not on Hugging Face yet: until it is, export it (training/README.md) and point
-  `AUTO_COMPACT_MODEL` at the `.gguf` file. It needs
-  llama.cpp build 11361 or later (`llama-server` or `llama` on your PATH, or
+- **[Spisev](https://huggingface.co/arthur-fontaine/spisev-alpha-GGUF) (local)**: `/auto-compact setup` asks before downloading the GGUF (about
+  1.9 GB) from Hugging Face and starts `llama-server` on 127.0.0.1 with `-hf`, for the rest of
+  the session. It needs llama.cpp build 11361 or later (`llama-server` or `llama` on your PATH, or
   `AUTO_COMPACT_LLAMA_SERVER`). A `.gguf` path in `AUTO_COMPACT_MODEL` is served with `-m`.
 - **Mammoth (Baseten)** or **Jev (OpenCode Zen)**: setup saves the endpoint and model; the
   key is read from `AUTO_COMPACT_API_KEY` in the environment and never stored. Any other
@@ -117,9 +115,9 @@ read off the results:
 
 | Model | Runs | Right action | Kept when it should | Acted when it should | Right action, auto mode | Right category | Latency p50 / p95 |
 | :- | :- | -: | -: | -: | -: | -: | -: |
-| **Spisev 1.7B** | Local · llama.cpp · Q8_0, 1.8 GB | 93.3% | 97.5% | 79.4% | 87.1% | 81.5% | 138 / 2590 ms |
+| **[Spisev 1.7B](https://huggingface.co/arthur-fontaine/spisev-alpha-GGUF)** | Local · llama.cpp · Q8_0, 1.8 GB | 93.3% | 97.5% | 79.4% | 87.1% | 81.5% | 138 / 2590 ms |
 | Qwen3.5-2B, same recipe | Local · llama.cpp · Q8_0, 2.0 GB | 93.8% | 97.2% | 82.5% | 87.8% | 83.6% | 431 / 1913 ms |
-| Kev-4B | Local · llama.cpp · Q8_0, 4.5 GB | 83.0% | 87.5% | 68.0% | 76.8% | 62.0% | 1219 / 6225 ms |
+| [Kev-4B](https://huggingface.co/mys/kev-4b-GGUF) | Local · llama.cpp · Q8_0, 4.5 GB | 83.0% | 87.5% | 68.0% | 76.8% | 62.0% | 1219 / 6225 ms |
 | Elephant 9B | Cloud · Baseten | 94.3% | 98.1% | 81.4% | 86.6% | 74.7% | 194 / 276 ms |
 | Mammoth 27B | Cloud · Baseten | 96.9% | 98.4% | 91.8% | 91.9% | 86.8% | 225 / 415 ms |
 | Always keep | | 76.8% | 100% | 0% | 76.8% | | |

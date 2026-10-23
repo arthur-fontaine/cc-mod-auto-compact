@@ -1,12 +1,12 @@
 # Spisev
 
-Spisev is the task-boundary classifier behind the auto-compact mod: for each new user
+[Spisev](https://huggingface.co/arthur-fontaine/spisev-alpha-GGUF) is the task-boundary classifier behind the auto-compact mod: for each new user
 message in a Claude Code session, it decides how much of the current context is still
 needed. The name is Latin *spissus* (compact, dense) + Jev, like Nisev (*nisus* + Jev).
 
 This folder is everything about the model: the data pipeline, a summary tree built with
 Haiku, labels from a teacher (Baseten Mammoth), a review site for human labels, and
-**spisev-alpha**, a small local model distilled from Mammoth's unreviewed labels and served
+**[spisev-alpha](https://huggingface.co/arthur-fontaine/spisev-alpha-GGUF)**, a small local model distilled from Mammoth's unreviewed labels and served
 by llama.cpp. It follows Nisev (cc-mod-auto-effort, training/README.md) and reuses its code
 where it fits: fetch, clean, the cloud scripts, calibrate, select_checkpoint, export_gguf.
 
@@ -298,7 +298,7 @@ the category for 379 (87.3%) and on the action for 418 (96.3%: 321 keep, 31 comp
 clear). The 418 form the key. On the subscription this billed $0; the list-price equivalent
 was $7.69 for Sonnet and $15.61 for Opus.
 
-**The predictions** come from `evaluate.py`, one request at a time against llama-server. Kev-4B
+**The predictions** come from `evaluate.py`, one request at a time against llama-server. [Kev-4B](https://huggingface.co/mys/kev-4b-GGUF)
 is [auto-effort](https://github.com/arthur-fontaine/cc-mod-auto-effort)'s decision model,
 asked this question zero-shot through the same System One request. Mammoth's test answers
 come from `evaluate.py --mammoth`; on the splices it reuses the teacher labels, which were
