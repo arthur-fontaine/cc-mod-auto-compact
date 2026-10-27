@@ -39,7 +39,7 @@ function stub(on: any, { env = MAMMOTH, rows = ROWS, fetch, complete }: Setup = 
   const seen = {
     requests: [] as any[], compactions: [] as any[], logs: [] as string[], statuses: [] as unknown[],
     labels: [] as unknown[], completions: [] as any[], writes: new Map<string, string>(), prompts: [] as string[],
-    clock: null as any, commands: [] as string[],
+    clock: null as any, commands: [] as string[], origins: [] as any[], box: '',
   }
   seen.clock = mock.clock(on)
   mock.env(on, env)
@@ -90,7 +90,13 @@ function stub(on: any, { env = MAMMOTH, rows = ROWS, fetch, complete }: Setup = 
   })
   on('prompt.submit', ($: any, e: any) => {
     seen.prompts.push(e.text)
+    seen.origins.push(e.origin)
     return { text: e.text }
+  })
+  on('prompt.read', () => ({ value: { text: seen.box, cursor: seen.box.length } }))
+  on('prompt.fill', ($: any, e: any) => {
+    seen.box = e.text
+    return { isFilled: true }
   })
   on('turn.complete', () => ({ text: '' }))
   return seen
@@ -150,6 +156,24 @@ test('auto clears an independent task with /clear, and the prompt still goes', a
   expect(seen.commands).toEqual(['clear'])
   expect(seen.compactions.length).toBe(0)
   expect(seen.labels).toContain('cleared · independent · 95%')
+  expect(seen.prompts).toEqual(['write a poem'])
+})
+
+test('the held prompt goes as the person typed it, and leaves the box', async ($, on) => {
+  const seen = stub(on, { env: { ...MAMMOTH, AUTO_COMPACT_MODE: 'auto' }, fetch: () => ({ value: answer('independent', 0.95) }) })
+  await submit($, 'write a poem')
+  seen.box = 'write a poem' // what the engine puts back on a drop
+  await seen.clock.advance(1)
+  expect(seen.box).toBe('')
+  expect(seen.origins.at(-1)).toMatchObject({ kind: 'plugin', asUser: true })
+})
+
+test('a draft typed since the drop is left alone', async ($, on) => {
+  const seen = stub(on, { env: { ...MAMMOTH, AUTO_COMPACT_MODE: 'auto' }, fetch: () => ({ value: answer('independent', 0.95) }) })
+  await submit($, 'write a poem')
+  seen.box = 'something else'
+  await seen.clock.advance(1)
+  expect(seen.box).toBe('something else')
   expect(seen.prompts).toEqual(['write a poem'])
 })
 

@@ -359,9 +359,21 @@ async function onPrompt($, e) {
   return null
 }
 
+// The engine puts a dropped prompt back in the box. The mod sends it itself, so the box is emptied,
+// but only while it still holds that prompt: what the person typed since stays.
+async function clearDraft($, text) {
+  try {
+    const box = await $.prompt.read()
+    if (box.text.trim() === text.trim()) await $.prompt.fill({ text: '', mode: 'replace' })
+  } catch {
+    // No box to clear (headless).
+  }
+}
+
 function actThenResend($, plan, text) {
   $.clock.after(0, async () => {
     const { decision, viewText, prompt } = plan
+    await clearDraft($, text)
     let outcome
     try {
       outcome = await perform($, decision, viewText, prompt)
@@ -373,8 +385,10 @@ function actThenResend($, plan, text) {
     }
     lastDecision = { ...decision, outcome }
     debug($, '[auto-compact] ' + outcome + ', sending the prompt')
+    await clearDraft($, text)
     resending.add(text)
-    await $.prompt.submit({ text, wait: false })
+    // asUser: the model reads the person's prompt as they typed it, not as a message from the plugin.
+    await $.prompt.submit({ text, asUser: true })
   })
 }
 
