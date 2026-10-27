@@ -65,6 +65,7 @@ async function loadConfig($) {
     apiKey: await $.env.get('AUTO_COMPACT_API_KEY'),
     mode: await $.env.get('AUTO_COMPACT_MODE'),
     minConfidence: await $.env.get('AUTO_COMPACT_MIN_CONFIDENCE'),
+    suggestConfidence: await $.env.get('AUTO_COMPACT_SUGGEST_CONFIDENCE'),
     timeoutMs: await $.env.get('AUTO_COMPACT_TIMEOUT_MS'),
     llamaServer: await $.env.get('AUTO_COMPACT_LLAMA_SERVER'),
   }
@@ -421,7 +422,7 @@ async function setup($) {
 
 async function status($) {
   const config = await loadConfig($)
-  const lines = ['auto-compact mode: ' + config.mode + (config.mode === 'auto' ? ' (acts at ≥ ' + config.minConfidence + ')' : '')]
+  const lines = ['auto-compact mode: ' + config.mode + (config.mode === 'auto' ? ' (acts at ≥ ' + config.minConfidence + ')' : config.mode === 'suggest' ? ' (asks at ≥ ' + config.suggestConfidence + ')' : '')]
   if (config.provider === 'spisev') lines.push('Provider: Spisev (spisev-alpha) ' + config.model + ' at ' + config.endpoint + ' (' + (server?.state ?? 'stopped') + ')')
   else if (config.provider) lines.push('Provider: ' + config.endpoint + ' · model ' + config.model + ' · key ' + (config.apiKey ? 'set' : 'unset'))
   else lines.push('Provider: none, run /auto-compact setup')

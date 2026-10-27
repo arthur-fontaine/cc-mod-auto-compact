@@ -47,7 +47,9 @@ of the session.
 
 In **suggest** mode (the default), a prompt that looks like a related, returning or unrelated
 task opens a question before it is sent: compact (or clear) first, or send it as is. Nothing
-happens without your press. In **auto** mode the mod acts only when the decision's confidence
+happens without your press. It asks only at a confidence of `AUTO_COMPACT_SUGGEST_CONFIDENCE`
+(0.6) or more: below that, Spisev's suggestions were right half the time on the
+[benchmark](#benchmark) (13 of 25), and from there on 64 of 67. In **auto** mode the mod acts only when the decision's confidence
 is at least `AUTO_COMPACT_MIN_CONFIDENCE` (0.85). `continuation` and `follow_up` never act. The
 mod never acts on subagents, on a timeout or an error, without a provider, or while the
 previous turn's summaries are still being built (the status line says
@@ -70,6 +72,7 @@ prompt. A prompt with attachments is never held back. The footer shows each deci
 | `AUTO_COMPACT_API_KEY` | | the cloud provider's key, never stored |
 | `AUTO_COMPACT_MODE` | `suggest` | overrides the saved mode |
 | `AUTO_COMPACT_MIN_CONFIDENCE` | `0.85` | auto mode's threshold |
+| `AUTO_COMPACT_SUGGEST_CONFIDENCE` | `0.6` | suggest mode's threshold |
 | `AUTO_COMPACT_TIMEOUT_MS` | `4000` | a slower answer keeps the context |
 | `AUTO_COMPACT_SUMMARIZER_MODEL` | `claude-haiku-5-5` | a full model id |
 | `AUTO_COMPACT_DATA_DIR` | `~/.claude/plugins/data/auto-compact` | where each session's summary tree is saved |

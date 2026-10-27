@@ -9,6 +9,7 @@ test('there is no default provider', () => {
   expect(config.provider).toBeUndefined()
   expect(config.mode).toBe('suggest')
   expect(config.minConfidence).toBe(0.85)
+  expect(config.suggestConfidence).toBe(0.6)
 })
 
 test('a cloud endpoint needs its model and key, and the key is never read from the store', () => {
@@ -46,6 +47,13 @@ test('continuation and follow_up never act; auto needs the threshold; suggest of
   expect(decide(response('related', 0.8), auto)).toMatchObject({ act: false, reason: 'low confidence' })
   expect(decide(response('return', 0.6), { ...auto, mode: 'suggest' })).toMatchObject({ suggest: true, action: 'compact_branch' })
   expect(decide({}, auto)).toMatchObject({ action: 'keep', reason: 'no answer' })
+})
+
+test('suggest mode does not ask below its own threshold', () => {
+  const suggest = resolveConfig({ mode: 'suggest' })
+  expect(decide(response('independent', 0.4), suggest)).toMatchObject({ suggest: false, act: false, reason: 'low confidence' })
+  expect(decide(response('independent', 0.6), suggest)).toMatchObject({ suggest: true, action: 'clear' })
+  expect(decide(response('related', 0.5), resolveConfig({ mode: 'suggest', suggestConfidence: '0.3' })).suggest).toBe(true)
 })
 
 test('footer and debug lines', () => {

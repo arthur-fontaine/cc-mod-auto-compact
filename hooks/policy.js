@@ -18,7 +18,9 @@ export const NEVER_ACT = new Set(['continuation', 'follow_up'])
 
 export const MODES = ['off', 'suggest', 'auto']
 
-export const DEFAULTS = { mode: 'suggest', minConfidence: 0.85, timeoutMs: 4000 }
+// suggestConfidence: below 0.6, Spisev's suggestions were right half the time on the benchmark
+// (13 of 25), above it 64 of 67; asking at 40% only trains the person to press "Send as is".
+export const DEFAULTS = { mode: 'suggest', minConfidence: 0.85, suggestConfidence: 0.6, timeoutMs: 4000 }
 
 // Spisev, the local provider: spisev-alpha, the distilled proxy of Mammoth, served by llama.cpp's llama-server.
 export const SPISEV = {
@@ -68,6 +70,7 @@ export function resolveConfig(env = {}, stored = {}) {
     provider,
     mode: MODES.includes(env.mode) ? env.mode : MODES.includes(stored.mode) ? stored.mode : DEFAULTS.mode,
     minConfidence: toNumber(env.minConfidence, DEFAULTS.minConfidence),
+    suggestConfidence: toNumber(env.suggestConfidence, DEFAULTS.suggestConfidence),
     timeoutMs: toNumber(env.timeoutMs, DEFAULTS.timeoutMs),
     endpoint: pick(env.endpoint, saved.endpoint, spisev ? SPISEV.endpoint : undefined),
     model: pick(env.model, saved.model, spisev ? SPISEV.model : undefined),
@@ -108,7 +111,9 @@ export function decide(response, config) {
   if (NEVER_ACT.has(category) || wanted === 'keep') return { ...base, action: 'keep', act: false, suggest: false, reason: 'keep' }
   if (config.mode === 'off') return { ...base, act: false, suggest: false, reason: 'off' }
   if (config.mode === 'auto' && confidence >= config.minConfidence) return { ...base, act: true, suggest: false, reason: 'auto' }
-  if (config.mode === 'auto') return { ...base, act: false, suggest: false, reason: 'low confidence' }
+  if (config.mode === 'auto' || confidence < (config.suggestConfidence ?? DEFAULTS.suggestConfidence)) {
+    return { ...base, act: false, suggest: false, reason: 'low confidence' }
+  }
   return { ...base, act: false, suggest: true, reason: 'suggest' }
 }
 
