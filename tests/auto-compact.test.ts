@@ -254,10 +254,29 @@ test('the debug pane shows the message, the memory sent and the decision, on eve
     expect((await ui.find({ type: 'Text', text: /changelog entry/ }))?.text).toBe('and add a changelog entry for it')
     expect((await ui.find({ type: 'Text', text: /^Memory/ }))?.text).toBe('Memory · 4 lines over 4 messages')
     expect((await ui.find({ type: 'Text', text: /verbose flag to the CLI/ }))?.text).toBe('user: Add a --verbose flag to the CLI')
+    expect((await ui.find({ type: 'Text', text: /^raw/ }))?.text).toMatch(/^raw +37 B · 475 left$/)
     expect((await ui.find({ type: 'Text', text: /follow_up ·/ }))?.text).toBe('follow_up · 92%')
     expect((await ui.find({ type: 'Text', text: /^outcome/ }))?.text).toBe('outcome: keep')
     await ui.unmount()
   }
+})
+
+test('the debug pane marks a summarized line, with its size and no room left to count', async ($, on) => {
+  const rows = [...ROWS.slice(0, 3), { role: 'assistant', text: 'Long reply. '.repeat(100), toolUses: [] }]
+  stub(on, { rows })
+  await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
+  await submit($, 'one more thing')
+  const ui = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^summary/ }))?.text).toMatch(/^summary +25 B$/)
+  await ui.unmount()
+})
+
+test('the debug pane marks two short messages merged without a call as joined', async ($, on) => {
+  stub(on, { rows: Array.from({ length: 9 }, () => ROWS).flat() })
+  await submit($, 'one more thing')
+  const ui = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^joined/ }))?.text).toMatch(/^joined +\d+ B · +\d+ left$/)
+  await ui.unmount()
 })
 
 test('the debug pane follows a held prompt to its outcome', async ($, on) => {

@@ -7,6 +7,8 @@ export type AutoCompactTrace = {
   message: string
   // The summary lines sent as `conversation`, one per line; null when nothing was sent.
   memory: string | null
+  // Each line of the view before clipping: its text verbatim, both halves joined, or a summary.
+  lines: { name: string; source: 'raw' | 'joined' | 'summary'; bytes: number }[] | null
   messages: number | null
   decision: {
     category: string | null

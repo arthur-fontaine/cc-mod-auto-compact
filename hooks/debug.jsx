@@ -1,6 +1,7 @@
 // The debug pane: the last prompt the mod looked at, the memory it sent with it, and the decision.
 
 import { CATEGORIES } from './task.js'
+import { LIMIT } from './tree.js'
 
 export const PANE = 'auto-compact-debug'
 export const TITLE = 'auto-compact debug'
@@ -8,6 +9,14 @@ export const TITLE = 'auto-compact debug'
 const ACTION_COLOR = { keep: 'success', compact_view: 'warning', compact_branch: 'warning', clear: 'error' }
 
 const pct = (x) => Math.round(x * 100) + '%'
+
+// `raw  37 B · 475 left`: where the line came from, its size, and the room left before the
+// summarizer would have to compress it. A summary line is compressed already.
+function size(line) {
+  if (!line) return ''
+  const bytes = line.source.padEnd(7) + String(line.bytes).padStart(4) + ' B'
+  return line.source === 'summary' ? bytes : bytes + ' · ' + String(LIMIT - line.bytes).padStart(3) + ' left'
+}
 
 function clock(at) {
   const d = new Date(at)
@@ -33,6 +42,8 @@ export function drawDebug($, e, trace) {
     return bar < 0 ? ['', line] : [line.slice(0, bar), line.slice(bar + 1)]
   })
   const nameWidth = Math.max(0, ...memory.map(([name]) => name.length))
+  const lines = new Map((trace.lines ?? []).map((line) => [line.name, line]))
+  const sizeWidth = Math.max(0, ...memory.map(([name]) => size(lines.get(name)).length))
   const d = trace.decision
   const barWidth = Math.max(8, Math.min(30, columns - 26))
 
@@ -58,6 +69,9 @@ export function drawDebug($, e, trace) {
           <Box flexDirection="row" gap={1}>
             <Box width={nameWidth} flexShrink={0}>
               <Text dimColor>{name}</Text>
+            </Box>
+            <Box width={sizeWidth} flexShrink={0}>
+              <Text color={lines.get(name)?.source === 'summary' ? 'claude' : 'subtle'}>{size(lines.get(name))}</Text>
             </Box>
             <Box flexGrow={1} flexShrink={1}>
               <Text wrap="wrap">{text}</Text>

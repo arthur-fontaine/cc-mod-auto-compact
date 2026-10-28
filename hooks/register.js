@@ -7,7 +7,7 @@ import {
 } from './policy.js'
 import { PROMPT_PATH, SUMMARIZER, summarize } from './summarizer.js'
 import { clipState, request } from './task.js'
-import { cleanPrompt, messages, render } from './text.js'
+import { cleanPrompt, messages, render, utf8Len } from './text.js'
 import * as tree from './tree.js'
 
 const USER_ORIGINS = ['composer', 'bridge', 'sdk']
@@ -17,7 +17,7 @@ const BUILD_WAIT_MS = 120_000
 // The footer label, kept in $.state so a reload keeps it.
 const label = atom({ plugin: 'auto-compact', key: 'label' }, null)
 // What the debug pane draws. Bump the shape when AutoCompactTrace changes, so a reload drops the old one.
-const trace = atom({ plugin: 'auto-compact', key: 'trace' }, null, { shape: 'trace-1' })
+const trace = atom({ plugin: 'auto-compact', key: 'trace' }, null, { shape: 'trace-2' })
 
 let systemPrompt = null
 let nodes = null // summary line by hash of its request, for this session
@@ -129,13 +129,16 @@ async function saveNodes($) {
 
 class Missing extends Error {}
 
-// The text of every node the view at msgs.length needs. With `allowCalls`, missing summaries are
-// built with $.model.complete, up to SUMMARY_CONCURRENCY at once; without, a missing one throws.
+// The text of every node the view at msgs.length needs, with where it came from: `raw` (the message,
+// under tree.LIMIT), `joined` (both halves, under tree.LIMIT together) or `summary` (the summarizer).
+// With `allowCalls`, missing summaries are built with $.model.complete, up to SUMMARY_CONCURRENCY at
+// once; without, a missing one throws.
 async function treeTexts($, msgs, { allowCalls }) {
   const store = await loadNodes($)
   const sys = allowCalls ? await system($) : null
   const settings = await summarizerSettings($)
   const memo = new Map()
+  const sources = new Map()
   let active = 0
   const waiting = []
   const slot = async () => {
@@ -157,6 +160,7 @@ async function treeTexts($, msgs, { allowCalls }) {
     if (node[0] === 0) source = render(msgs[node[1]])
     else source = await Promise.all(tree.children(node).map(text))
     const free = tree.noCallText(node, source)
+    sources.set(tree.key(node), free === null ? 'summary' : node[0] === 0 ? 'raw' : 'joined')
     if (free !== null) return free
     const context = await Promise.all(tree.contextView(node).map(async (n) => [n, await text(n)]))
     const prompt = node[0] === 0
@@ -179,7 +183,7 @@ async function treeTexts($, msgs, { allowCalls }) {
   const results = await Promise.allSettled(order.map(text))
   const failed = results.find((r) => r.status === 'rejected')
   if (failed) throw failed.reason
-  return Promise.all(lines.map(async (n) => [n, await text(n)]))
+  return Promise.all(lines.map(async (n) => [n, await text(n), sources.get(tree.key(n))]))
 }
 
 async function sessionMessages($) {
@@ -323,7 +327,8 @@ async function onPrompt($, e) {
   if (building) await Promise.race([building, $.clock.sleep(2000)])
   const msgs = await sessionMessages($)
   const prompt = cleanPrompt(e.text) ?? e.text
-  const seen = { at: await $.clock.now(), message: prompt, memory: null, messages: msgs.length, decision: null, latencyMs: null }
+  const seen = { at: await $.clock.now(), message: prompt, memory: null, lines: null, messages: msgs.length,
+    decision: null, latencyMs: null }
   const skip = (outcome) => record($, () => ({ ...seen, outcome }))
   if (msgs.length < 2) return void (await skip('skipped (fewer than 2 messages)'))
   let view
@@ -343,6 +348,7 @@ async function onPrompt($, e) {
   const state = clipState(viewText, prompt)
   seen.message = state.latest_user_message
   seen.memory = state.conversation
+  seen.lines = view.map(([node, text, source]) => ({ name: tree.name(node), source, bytes: utf8Len(text) }))
   let decision
   const asked = await $.clock.now()
   try {
