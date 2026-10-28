@@ -11,7 +11,8 @@ const ACTION_COLOR = { keep: 'success', compact_view: 'warning', compact_branch:
 const pct = (x) => Math.round(x * 100) + '%'
 
 // `raw  37 B · 475 left`: where the line came from, its size, and the room left before the
-// summarizer would have to compress it. A summary line is compressed already.
+// summarizer would have to compress it. A summary line is compressed already, and its inputs are
+// drawn dimmed under it.
 function size(line) {
   if (!line) return ''
   const bytes = line.source.padEnd(7) + String(line.bytes).padStart(4) + ' B'
@@ -66,16 +67,29 @@ export function drawDebug($, e, trace) {
         </Heading>
         {trace.memory === null && <Text dimColor>Not sent.</Text>}
         {memory.map(([name, text]) => (
-          <Box flexDirection="row" gap={1}>
-            <Box width={nameWidth} flexShrink={0}>
-              <Text dimColor>{name}</Text>
+          <Box flexDirection="column">
+            <Box flexDirection="row" gap={1}>
+              <Box width={nameWidth} flexShrink={0}>
+                <Text dimColor>{name}</Text>
+              </Box>
+              <Box width={sizeWidth} flexShrink={0}>
+                <Text color={lines.get(name)?.source === 'summary' ? 'claude' : 'subtle'}>{size(lines.get(name))}</Text>
+              </Box>
+              <Box flexGrow={1} flexShrink={1}>
+                <Text wrap="wrap">{text}</Text>
+              </Box>
             </Box>
-            <Box width={sizeWidth} flexShrink={0}>
-              <Text color={lines.get(name)?.source === 'summary' ? 'claude' : 'subtle'}>{size(lines.get(name))}</Text>
-            </Box>
-            <Box flexGrow={1} flexShrink={1}>
-              <Text wrap="wrap">{text}</Text>
-            </Box>
+            {(lines.get(name)?.from ?? []).map((input) => (
+              <Box flexDirection="row" gap={1}>
+                <Box width={nameWidth} flexShrink={0} />
+                <Box width={sizeWidth} flexShrink={0}>
+                  <Text dimColor>{'↳ ' + (input.name ?? 'message')}</Text>
+                </Box>
+                <Box flexGrow={1} flexShrink={1}>
+                  <Text dimColor wrap="wrap">{input.text}</Text>
+                </Box>
+              </Box>
+            ))}
           </Box>
         ))}
       </Box>

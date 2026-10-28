@@ -261,13 +261,16 @@ test('the debug pane shows the message, the memory sent and the decision, on eve
   }
 })
 
-test('the debug pane marks a summarized line, with its size and no room left to count', async ($, on) => {
+test('the debug pane marks a summarized line, with its size and the message it was made from', async ($, on) => {
   const rows = [...ROWS.slice(0, 3), { role: 'assistant', text: 'Long reply. '.repeat(100), toolUses: [] }]
   stub(on, { rows })
   await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
   await submit($, 'one more thing')
   const ui = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^summary/ }))?.text).toMatch(/^summary +25 B$/)
+  expect((await ui.find({ type: 'Text', text: /^↳/ }))?.text).toBe('↳ message')
+  // 1206 bytes, clipped in the middle to 1024.
+  expect((await ui.find({ type: 'Text', text: /^agent: Long reply/ }))?.text).toContain('\n[… truncated …]\n')
   await ui.unmount()
 })
 
