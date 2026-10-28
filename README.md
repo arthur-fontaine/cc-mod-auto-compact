@@ -44,6 +44,7 @@ of the session.
 - `/auto-compact`: the provider, the mode, the state of the summary tree and the last decision.
 - `/auto-compact setup`: choose a provider.
 - `/auto-compact mode off|suggest|auto`: saved across sessions.
+- `/auto-compact debug`: a pane with the last prompt looked at, the summary lines sent with it, and the decision (each category's probability, the action and what came of it).
 
 In **suggest** mode (the default), a prompt that looks like a related, returning or unrelated
 task opens a question before it is sent: compact (or clear) first, or send it as is. Nothing

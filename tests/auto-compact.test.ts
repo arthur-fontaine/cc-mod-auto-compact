@@ -240,3 +240,52 @@ test('a usage limit while summarizing pauses the summaries', async ($, on) => {
   await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
   expect(seen.statuses).toContain('auto-compact: Claude usage limit, summaries paused')
 })
+
+const DEBUG_PANE = {
+  plugin: 'auto-compact', component: 'Pane', requestId: 'auto-compact-debug',
+  props: { title: 'auto-compact debug', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} },
+} as const
+
+test('the debug pane shows the message, the memory sent and the decision, on every surface', async ($, on) => {
+  stub(on)
+  await submit($, 'and add a changelog entry for it')
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...DEBUG_PANE, surface })
+    expect((await ui.find({ type: 'Text', text: /changelog entry/ }))?.text).toBe('and add a changelog entry for it')
+    expect((await ui.find({ type: 'Text', text: /^Memory/ }))?.text).toBe('Memory · 4 lines over 4 messages')
+    expect((await ui.find({ type: 'Text', text: /verbose flag to the CLI/ }))?.text).toBe('user: Add a --verbose flag to the CLI')
+    expect((await ui.find({ type: 'Text', text: /follow_up ·/ }))?.text).toBe('follow_up · 92%')
+    expect((await ui.find({ type: 'Text', text: /^outcome/ }))?.text).toBe('outcome: keep')
+    await ui.unmount()
+  }
+})
+
+test('the debug pane follows a held prompt to its outcome', async ($, on) => {
+  const seen = stub(on, { env: { ...MAMMOTH, AUTO_COMPACT_MODE: 'auto' }, fetch: () => ({ value: answer('related', 0.9) }) })
+  await submit($, 'now set up CI for this repo')
+  const before = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await before.find({ type: 'Text', text: /^outcome/ }))?.text).toBe('outcome: compacting')
+  await before.unmount()
+  await seen.clock.advance(1)
+  const after = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await after.find({ type: 'Text', text: /^outcome/ }))?.text).toBe('outcome: compacted')
+  await after.unmount()
+})
+
+test('the debug pane says when nothing was sent', async ($, on) => {
+  const rows = [...ROWS.slice(0, 3), { role: 'assistant', text: 'Long reply. '.repeat(100), toolUses: [] }]
+  const other = stub(on, { rows })
+  await submit($, 'next')
+  expect(other.requests.length).toBe(0)
+  const skipped = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await skipped.find({ type: 'Text', text: /^Not sent/ }))?.text).toBe('Not sent.')
+  expect((await skipped.find({ type: 'Text', text: /^outcome/ }))?.text).toMatch(/skipped \(summaries catching up/)
+  await skipped.unmount()
+})
+
+test('the debug pane says so before any prompt', async ($, on) => {
+  stub(on)
+  const ui = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text' }))?.text).toMatch(/No prompt looked at yet/)
+  await ui.unmount()
+})

@@ -1,5 +1,6 @@
 import { atom, read, update } from 'claude-code'
 
+import { PANE, TITLE, drawDebug } from './debug.jsx'
 import { parseBuild, parseServerOutput, serverArgs, serverCommand, servesOurModel } from './llama.js'
 import {
   SPISEV, compactInstructions, decide, describe, headers, logLine, MODES, PRESETS, resolveConfig,
@@ -15,6 +16,8 @@ const BUILD_WAIT_MS = 120_000
 
 // The footer label, kept in $.state so a reload keeps it.
 const label = atom({ plugin: 'auto-compact', key: 'label' }, null)
+// What the debug pane draws. Bump the shape when AutoCompactTrace changes, so a reload drops the old one.
+const trace = atom({ plugin: 'auto-compact', key: 'trace' }, null, { shape: 'trace-1' })
 
 let systemPrompt = null
 let nodes = null // summary line by hash of its request, for this session
@@ -29,6 +32,10 @@ const resending = new Set() // prompts held back while compacting, sent again as
 
 function show($, text) {
   return update($, label, () => text).catch(() => {})
+}
+
+function record($, fn) {
+  return update($, trace, fn).catch(() => {})
 }
 
 function debug($, text) {
@@ -315,7 +322,10 @@ async function onPrompt($, e) {
   }
   if (building) await Promise.race([building, $.clock.sleep(2000)])
   const msgs = await sessionMessages($)
-  if (msgs.length < 2) return
+  const prompt = cleanPrompt(e.text) ?? e.text
+  const seen = { at: await $.clock.now(), message: prompt, memory: null, messages: msgs.length, decision: null, latencyMs: null }
+  const skip = (outcome) => record($, () => ({ ...seen, outcome }))
+  if (msgs.length < 2) return void (await skip('skipped (fewer than 2 messages)'))
   let view
   try {
     view = await treeTexts($, msgs, { allowCalls: false })
@@ -323,24 +333,34 @@ async function onPrompt($, e) {
     if (!(error instanceof Missing)) throw error
     $.ui.status('auto-compact: summaries catching up')
     debug($, '[auto-compact] summaries catching up (' + error.message + ' not built) → keep')
-    return
+    return void (await skip('skipped (summaries catching up: ' + error.message + ' not built)'))
   }
   if (config.provider === 'spisev' && (await spisevReady($, config)) !== 'ready') {
     debug($, '[auto-compact] Spisev ' + server.state + ' → keep')
-    return
+    return void (await skip('skipped (Spisev ' + server.state + ')'))
   }
   const viewText = tree.viewText(view)
-  const prompt = cleanPrompt(e.text) ?? e.text
+  const state = clipState(viewText, prompt)
+  seen.message = state.latest_user_message
+  seen.memory = state.conversation
   let decision
+  const asked = await $.clock.now()
   try {
-    decision = decide(await askProvider($, config, clipState(viewText, prompt)), config)
+    decision = decide(await askProvider($, config, state), config)
   } catch (error) {
     lastError = error.message
     debug($, '[auto-compact] provider: ' + error.message + ' → keep')
-    return
+    seen.latencyMs = (await $.clock.now()) - asked
+    return void (await skip('keep (provider: ' + error.message + ')'))
+  }
+  seen.latencyMs = (await $.clock.now()) - asked
+  seen.decision = {
+    category: decision.category, confidence: decision.confidence, action: decision.action,
+    reason: decision.reason, probabilities: decision.probabilities ?? {},
   }
   let outcome = decision.action === 'keep' ? 'keep' : decision.reason === 'suggest' ? 'suggested' : 'keep (' + decision.reason + ')'
   const done = false
+  await skip(decision.suggest ? 'waiting for your answer' : decision.act ? 'acting' : outcome)
   const wants = decision.act || (decision.suggest && (await offer($, decision)))
   lastDecision = { ...decision, outcome }
   if (wants && e.attachments?.length) {
@@ -349,10 +369,12 @@ async function onPrompt($, e) {
     // $.session.compact can't run under the prompt.submit hook, which holds the turn: the prompt is
     // held back, the context compacted or cleared once the hook returns, and the same prompt sent again.
     debug($, logLine(decision, decision.action === 'clear' ? 'clear' : 'compact'))
+    await skip(decision.action === 'clear' ? 'clearing' : 'compacting')
     await show($, describe(decision))
     return { decision, viewText, prompt }
   }
   lastDecision = { ...decision, outcome }
+  await skip(outcome)
   debug($, logLine(decision, outcome))
   $.ui.status(undefined)
   await show($, describe(decision, done))
@@ -384,6 +406,7 @@ function actThenResend($, plan, text) {
       await show($, describe(decision))
     }
     lastDecision = { ...decision, outcome }
+    await record($, (t) => t && { ...t, outcome })
     debug($, '[auto-compact] ' + outcome + ', sending the prompt')
     await clearDraft($, text)
     resending.add(text)
@@ -461,7 +484,7 @@ export function register(on) {
     try {
       await $.command.register({
         name: 'auto-compact', description: 'Show or set up the task-boundary classifier that offers to compact',
-        argumentHint: '[setup|mode off|suggest|auto]', immediate: true,
+        argumentHint: '[setup|debug|mode off|suggest|auto]', immediate: true,
       })
     } catch (error) {
       debug($, '[auto-compact] could not register /auto-compact: ' + error.message)
@@ -522,16 +545,22 @@ export function register(on) {
     return text ? next({ ...e, props: { ...e.props, modes: [...e.props.modes, text] } }) : next(e)
   })
 
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => drawDebug($, e, await read($, trace)))
+
   on('command.run', { command: 'auto-compact' }, async ($, e) => {
     const [arg, value] = e.args.trim().toLowerCase().split(/\s+/)
     if (arg === 'setup') return setup($)
+    if (arg === 'debug') {
+      const opened = await $.ui.open({ id: PANE, title: TITLE })
+      return { text: opened.isPlaced ? 'Debug pane opened.' : 'Debug pane waiting: ' + opened.reason }
+    }
     if (arg === 'mode') {
       if (!MODES.includes(value)) return { text: 'Usage: /auto-compact mode off|suggest|auto' }
       const saved = await saveConfig($, { mode: value })
       await show($, value === 'off' ? 'auto-compact off' : null)
       return { text: 'auto-compact mode: ' + value + (saved ? ' (saved for later sessions).' : ' (this session only).') }
     }
-    if (arg) return { text: 'Usage: /auto-compact [setup|mode off|suggest|auto]' }
+    if (arg) return { text: 'Usage: /auto-compact [setup|debug|mode off|suggest|auto]' }
     return status($)
   })
 }
