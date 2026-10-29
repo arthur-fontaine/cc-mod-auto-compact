@@ -122,8 +122,31 @@ MAX_MEMORY_BYTES = 4_000
 MAX_AGENT_MESSAGE_BYTES = 1_536
 
 
-def question_v2():
-    return {"type": "choice", "instructions": INSTRUCTIONS_V2, "criteria": dict(CRITERIA)}
+def question_v2(variant="v2"):
+    return QUESTIONS_V2[variant]
+
+
+# Candidate questions for the v2 state, chosen on the tuning key (PLAN.md 3). Mammoth reads them
+# literally, so the edge cases its v2 errors showed are written into the criteria.
+CRITERIA_V2_RULES = {
+    "continuation": "Carries on the current task directly: answers or reacts to the agent's last reply (approves, "
+                    "refuses, corrects, picks one of its offers or ignores them), or asks for the next step of the "
+                    "same work.",
+    "follow_up": "Builds on the task just done or in progress: a fix, refinement, test or extension of the same "
+                 "thing that needs its details, including one the agent did not offer.",
+    "related": "A different goal in the same project or area: it needs the general picture (repo, files, "
+               "decisions), not the details of the recent work. Another feature or fix of the same thing is "
+               "follow_up, not related.",
+    "independent": "Unrelated to the conversation: a new topic or task that needs none of it. The agent having "
+                   "finished, committed or left a clean working tree does not make the next request unrelated.",
+    "return": "Goes back to an earlier task of the memory, set aside since, rather than the recent work.",
+}
+QUESTIONS_V2 = {
+    "v2": {"type": "choice", "instructions": INSTRUCTIONS_V2, "criteria": dict(CRITERIA)},
+    "rules": {"type": "choice", "criteria": CRITERIA_V2_RULES, "instructions": INSTRUCTIONS_V2 + (
+        " Judge by what the new message asks for, not by how the agent's reply ended: an offer, a list of "
+        "options or a wrap-up there does not decide the category.")},
+}
 
 
 def agent_reply(message):
@@ -150,8 +173,8 @@ def clip_state_v2(memory, last_agent_message, message):
     }
 
 
-def request_v2(state, model):
-    return {"model": model, "state": state, "questions": {QUESTION_ID: question_v2()}}
+def request_v2(state, model, variant="v2"):
+    return {"model": model, "state": state, "questions": {QUESTION_ID: question_v2(variant)}}
 
 
 def messages_v2(state):

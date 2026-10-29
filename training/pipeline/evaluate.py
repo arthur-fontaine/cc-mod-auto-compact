@@ -30,9 +30,12 @@ from task import CATEGORIES, QUESTION_ID, request, request_v2, state_size  # noq
 ROOT = Path(__file__).resolve().parent.parent
 
 
+QUESTION_V2 = "v2"  # --question: the candidate question asked of v2 states (task.QUESTIONS_V2)
+
+
 def request_for(state, model):
     """The System One request of a v1 or a v2 state."""
-    return (request_v2 if "memory" in state else request)(state, model)
+    return request_v2(state, model, QUESTION_V2) if "memory" in state else request(state, model)
 
 
 def ask_endpoint(endpoint, state, model="spisev-alpha"):
@@ -59,6 +62,7 @@ def main():
     parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
     parser.add_argument("--message-tokens", type=int, help="Clip each new message to this many (estimated) tokens")
     parser.add_argument("--warm", action="store_true", help="With --endpoint: prefill each state without its message first")
+    parser.add_argument("--question", default="v2", help="With v2 states: a question of task.QUESTIONS_V2")
     parser.add_argument("--name", required=True)
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int)
@@ -70,6 +74,8 @@ def main():
                              "evaluation can follow a newly served version without touching the training labels'")
     parser.add_argument("--dry-run", action="store_true", help="With --mammoth or --cloud: print the estimate only")
     args = parser.parse_args()
+    global QUESTION_V2
+    QUESTION_V2 = args.question
     from config import load_env
     load_env()
 
