@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v1noraw-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.9473684210526315,
+ "kl": 0.02416404916085695,
+ "ece": 0.22654492452142866,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.981203007518797,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 263.7,
+  "p95": 1393.2,
+  "max": 4545.9
+ }
+}

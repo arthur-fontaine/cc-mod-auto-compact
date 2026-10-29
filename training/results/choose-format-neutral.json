@@ -1,0 +1,170 @@
+{
+ "mammoth-v1-dev-new": {
+  "n": 254,
+  "right_action": 0.9488188976377953,
+  "kept_when_it_should": 0.9665271966527197,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9488188976377953,
+  "right_category": 0.85,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 292.7,
+   "p95": 581.8
+  }
+ },
+ "mammoth-v1noraw-dev": {
+  "n": 254,
+  "right_action": 0.9409448818897638,
+  "kept_when_it_should": 0.9581589958158996,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9488188976377953,
+  "right_category": 0.8590909090909091,
+  "errors": 0,
+  "timeouts": 2,
+  "latency_ms": {
+   "p50": 263.1,
+   "p95": 1283.8
+  }
+ },
+ "mammoth-v1raw-dev": {
+  "n": 254,
+  "right_action": 0.9212598425196851,
+  "kept_when_it_should": 0.9372384937238494,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.952755905511811,
+  "right_category": 0.8409090909090909,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 257.5,
+   "p95": 842.4
+  }
+ },
+ "mammoth-v2a-128-dev": {
+  "n": 254,
+  "right_action": 0.9330708661417323,
+  "kept_when_it_should": 0.9497907949790795,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9448818897637795,
+  "right_category": 0.8136363636363636,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 243.3,
+   "p95": 548.0
+  }
+ },
+ "mammoth-v2a-160-dev": {
+  "n": 254,
+  "right_action": 0.9212598425196851,
+  "kept_when_it_should": 0.9330543933054394,
+  "acted_when_it_should": 0.7333333333333333,
+  "right_action_applied": 0.9409448818897638,
+  "right_category": 0.8136363636363636,
+  "errors": 0,
+  "timeouts": 1,
+  "latency_ms": {
+   "p50": 256.9,
+   "p95": 591.5
+  }
+ },
+ "mammoth-v2b-128-dev": {
+  "n": 254,
+  "right_action": 0.9212598425196851,
+  "kept_when_it_should": 0.9372384937238494,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9448818897637795,
+  "right_category": 0.8272727272727273,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 246.8,
+   "p95": 423.1
+  }
+ },
+ "mammoth-v2b-192-dev": {
+  "n": 254,
+  "right_action": 0.8976377952755905,
+  "kept_when_it_should": 0.9205020920502092,
+  "acted_when_it_should": 0.5333333333333333,
+  "right_action_applied": 0.9409448818897638,
+  "right_category": 0.8181818181818182,
+  "errors": 0,
+  "timeouts": 2,
+  "latency_ms": {
+   "p50": 249.0,
+   "p95": 526.5
+  }
+ },
+ "mammoth-v2-128-dev": {
+  "n": 254,
+  "right_action": 0.9173228346456693,
+  "kept_when_it_should": 0.9372384937238494,
+  "acted_when_it_should": 0.6,
+  "right_action_applied": 0.9448818897637795,
+  "right_category": 0.8227272727272728,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 234.4,
+   "p95": 385.0
+  }
+ },
+ "mammoth-v2-128-noraw-dev": {
+  "n": 254,
+  "right_action": 0.9291338582677166,
+  "kept_when_it_should": 0.9456066945606695,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.937007874015748,
+  "right_category": 0.8272727272727273,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 216.5,
+   "p95": 355.1
+  }
+ },
+ "mammoth-v2-128-m14-dev": {
+  "n": 254,
+  "right_action": 0.9133858267716536,
+  "kept_when_it_should": 0.9330543933054394,
+  "acted_when_it_should": 0.6,
+  "right_action_applied": 0.9488188976377953,
+  "right_category": 0.8227272727272728,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 238.7,
+   "p95": 363.5
+  }
+ },
+ "mammoth-v2-512-dev": {
+  "n": 254,
+  "right_action": 0.9212598425196851,
+  "kept_when_it_should": 0.9414225941422594,
+  "acted_when_it_should": 0.6,
+  "right_action_applied": 0.9448818897637795,
+  "right_category": 0.8409090909090909,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 255.5,
+   "p95": 624.3
+  }
+ },
+ "mammoth-v2-512-noraw-dev": {
+  "n": 254,
+  "right_action": 0.937007874015748,
+  "kept_when_it_should": 0.9539748953974896,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9448818897637795,
+  "right_category": 0.8545454545454545,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 251.6,
+   "p95": 343.8
+  }
+ }
+}

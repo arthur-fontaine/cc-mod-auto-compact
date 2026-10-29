@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-512-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8796992481203008,
+ "kl": 0.07225435466004675,
+ "ece": 0.15089452331980963,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.943609022556391,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 255.5,
+  "p95": 601.5,
+  "max": 3535.6
+ }
+}

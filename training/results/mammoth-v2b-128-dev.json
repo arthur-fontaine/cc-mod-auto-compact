@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-128-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8646616541353384,
+ "kl": 0.10351661351948545,
+ "ece": 0.1387089455889089,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9285714285714286,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 246.7,
+  "p95": 426.0,
+  "max": 591.7
+ }
+}

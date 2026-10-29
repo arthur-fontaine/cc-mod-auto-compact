@@ -1,0 +1,170 @@
+{
+ "mammoth-v1-dev-new": {
+  "n": 249,
+  "right_action": 0.9518072289156626,
+  "kept_when_it_should": 0.9659574468085106,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9518072289156626,
+  "right_category": 0.8518518518518519,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 291.5,
+   "p95": 579.3
+  }
+ },
+ "mammoth-v1noraw-dev": {
+  "n": 249,
+  "right_action": 0.9437751004016064,
+  "kept_when_it_should": 0.9574468085106383,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9518072289156626,
+  "right_category": 0.8564814814814815,
+  "errors": 0,
+  "timeouts": 2,
+  "latency_ms": {
+   "p50": 263.0,
+   "p95": 1283.8
+  }
+ },
+ "mammoth-v1raw-dev": {
+  "n": 249,
+  "right_action": 0.927710843373494,
+  "kept_when_it_should": 0.9404255319148936,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9558232931726908,
+  "right_category": 0.8518518518518519,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 256.8,
+   "p95": 804.4
+  }
+ },
+ "mammoth-v2a-128-dev": {
+  "n": 249,
+  "right_action": 0.9397590361445783,
+  "kept_when_it_should": 0.9531914893617022,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8287037037037037,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 243.0,
+   "p95": 548.0
+  }
+ },
+ "mammoth-v2a-160-dev": {
+  "n": 249,
+  "right_action": 0.927710843373494,
+  "kept_when_it_should": 0.9404255319148936,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9437751004016064,
+  "right_category": 0.8101851851851852,
+  "errors": 0,
+  "timeouts": 1,
+  "latency_ms": {
+   "p50": 255.0,
+   "p95": 591.5
+  }
+ },
+ "mammoth-v2b-128-dev": {
+  "n": 249,
+  "right_action": 0.9317269076305221,
+  "kept_when_it_should": 0.9404255319148936,
+  "acted_when_it_should": 0.7857142857142857,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8425925925925926,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 245.5,
+   "p95": 426.0
+  }
+ },
+ "mammoth-v2b-192-dev": {
+  "n": 249,
+  "right_action": 0.9076305220883534,
+  "kept_when_it_should": 0.9276595744680851,
+  "acted_when_it_should": 0.5714285714285714,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8287037037037037,
+  "errors": 0,
+  "timeouts": 2,
+  "latency_ms": {
+   "p50": 246.9,
+   "p95": 523.4
+  }
+ },
+ "mammoth-v2-128-dev": {
+  "n": 249,
+  "right_action": 0.9236947791164659,
+  "kept_when_it_should": 0.9404255319148936,
+  "acted_when_it_should": 0.6428571428571429,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8240740740740741,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 234.0,
+   "p95": 385.0
+  }
+ },
+ "mammoth-v2-128-noraw-dev": {
+  "n": 249,
+  "right_action": 0.9317269076305221,
+  "kept_when_it_should": 0.948936170212766,
+  "acted_when_it_should": 0.6428571428571429,
+  "right_action_applied": 0.9397590361445783,
+  "right_category": 0.8287037037037037,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 216.6,
+   "p95": 385.0
+  }
+ },
+ "mammoth-v2-128-m14-dev": {
+  "n": 249,
+  "right_action": 0.9196787148594378,
+  "kept_when_it_should": 0.9361702127659575,
+  "acted_when_it_should": 0.6428571428571429,
+  "right_action_applied": 0.9518072289156626,
+  "right_category": 0.8194444444444444,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 238.0,
+   "p95": 363.5
+  }
+ },
+ "mammoth-v2-512-dev": {
+  "n": 249,
+  "right_action": 0.9357429718875502,
+  "kept_when_it_should": 0.948936170212766,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8472222222222222,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 254.8,
+   "p95": 624.3
+  }
+ },
+ "mammoth-v2-512-noraw-dev": {
+  "n": 249,
+  "right_action": 0.927710843373494,
+  "kept_when_it_should": 0.948936170212766,
+  "acted_when_it_should": 0.5714285714285714,
+  "right_action_applied": 0.9477911646586346,
+  "right_category": 0.8379629629629629,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 249.7,
+   "p95": 343.8
+  }
+ }
+}

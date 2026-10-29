@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-512-noraw-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8834586466165414,
+ "kl": 0.06130495949931786,
+ "ece": 0.1540372356859664,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9473684210526315,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 251.6,
+  "p95": 337.5,
+  "max": 941.1
+ }
+}
