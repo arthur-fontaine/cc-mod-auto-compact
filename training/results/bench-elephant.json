@@ -2,17 +2,18 @@
  "name": "elephant",
  "label": "Elephant 9B",
  "where": "Cloud \u00b7 Baseten",
+ "previous": null,
  "n": 418,
- "right_action": 0.9425837320574163,
- "kept_when_it_should": 0.9813084112149533,
+ "right_action": 0.9330143540669856,
+ "kept_when_it_should": 0.9688473520249221,
  "acted_when_it_should": 0.8144329896907216,
- "right_action_applied": 0.8660287081339713,
- "right_category": 0.7467018469656992,
+ "right_action_applied": 0.8803827751196173,
+ "right_category": 0.7071240105540897,
  "errors": 0,
  "timeouts": 0,
  "latency_ms": {
-  "p50": 193.6,
-  "p95": 275.8
+  "p50": 193.4,
+  "p95": 246.4
  },
  "baseline_keep": 0.7679425837320574,
  "threshold": 0.8038277511961722

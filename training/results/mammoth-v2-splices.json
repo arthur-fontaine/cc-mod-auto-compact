@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.9222222222222223,
+ "kl": 0.08434246862600457,
+ "ece": 0.09092216560650601,
+ "independent_precision": 1.0,
+ "independent_n": 64,
+ "action_agreement": 0.9222222222222223,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 230.6,
+  "p95": 292.0,
+  "max": 479.4
+ }
+}

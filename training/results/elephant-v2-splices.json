@@ -1,0 +1,17 @@
+{
+ "name": "elephant-v2-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.8444444444444444,
+ "kl": 0.23496601861151778,
+ "ece": 0.12459742303308513,
+ "independent_precision": 1.0,
+ "independent_n": 69,
+ "action_agreement": 0.8444444444444444,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 196.3,
+  "p95": 220.1,
+  "max": 298.0
+ }
+}

@@ -20,7 +20,7 @@ Y_MIN, Y_MAX = 70, 100  # % right action
 # within 400 ms; Doherty and Thadani, IBM, 1982), and above the lowest score that beats always
 # keeping the context by more than chance on these points (benchmark.threshold).
 GOAL_MS = 400
-LABELS = {"spisev": "below", "qwen3.5-2b": "below", "elephant": "left"}
+LABELS = {"spisev": "below", "qwen3.5-2b": "below", "elephant": "left", "spisev-previous": "below"}
 
 
 def results():
@@ -52,12 +52,14 @@ def svg():
   .zone { fill: #dafbe1; stroke: #1a7f37; } text.goal { fill: #1a7f37; }
   .local { fill: #0969da; stroke: #0969da; } .cloud { fill: #ffffff; stroke: #8250df; }
   .local-tail { stroke: #0969da; } .cloud-tail { stroke: #8250df; }
+  .previous circle { fill: #ffffff; } .previous { opacity: 0.5; }
   @media (prefers-color-scheme: dark) {
     .bg { fill: #0d1117; } text { fill: #e6edf3; } .muted { fill: #8d96a0; }
     .grid { stroke: #30363d; } .default { stroke: #8d96a0; }
     .zone { fill: #12261e; stroke: #3fb950; } text.goal { fill: #3fb950; }
     .local { fill: #4493f8; stroke: #4493f8; } .cloud { fill: #0d1117; stroke: #ab7df8; }
     .local-tail { stroke: #4493f8; } .cloud-tail { stroke: #ab7df8; }
+    .previous circle { fill: #0d1117; }
   }
 </style>""",
            f'<rect class="bg" width="{W}" height="{H}"/>']
@@ -87,6 +89,10 @@ def svg():
                f'always keep the context ({keep_pct:.1f}%)</text>')
 
     for r in rs:
+        # A model measured on the v1 state (an earlier version): drawn hollow and faded, with a note.
+        previous = r.get("previous")
+        if previous:
+            out.append('<g class="previous">')
         local = r["where"].startswith("Local")
         kind = "local" if local else "cloud"
         lat = r["latency_ms"]
@@ -104,6 +110,10 @@ def svg():
         lx, ly, anchor = {"above": (cx, cy - 12, "middle"), "below": (cx, cy + 24, "middle"),
                           "left": (cx - 10, cy - 10, "end")}[place]
         out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" style="font-weight: 600">{label}</text>')
+        if previous:
+            out.append(f'<text x="{lx:.1f}" y="{ly + 14:.1f}" text-anchor="{anchor}" class="muted" '
+                       f'style="font-size: 11px">{previous}</text>')
+            out.append("</g>")
 
     out.append(f'<text x="{LEFT}" y="26" style="font-size: 16px; font-weight: 600">Right action against latency</text>')
     out.append(f'<text x="{(LEFT + W - RIGHT) / 2:.0f}" y="{H - 18}" text-anchor="middle" class="muted">'

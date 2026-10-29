@@ -2,17 +2,18 @@
  "name": "spisev",
  "label": "Spisev 1.7B",
  "where": "Local \u00b7 llama.cpp \u00b7 Q8_0, 1.8 GB",
+ "previous": null,
  "n": 418,
- "right_action": 0.9330143540669856,
- "kept_when_it_should": 0.9750778816199377,
- "acted_when_it_should": 0.7938144329896907,
- "right_action_applied": 0.8708133971291866,
- "right_category": 0.8153034300791556,
+ "right_action": 0.9186602870813397,
+ "kept_when_it_should": 0.9688473520249221,
+ "acted_when_it_should": 0.7525773195876289,
+ "right_action_applied": 0.8564593301435407,
+ "right_category": 0.8073878627968337,
  "errors": 0,
- "timeouts": 3,
+ "timeouts": 0,
  "latency_ms": {
-  "p50": 137.7848330012057,
-  "p95": 2590.048915997613
+  "p50": 273.5746670514345,
+  "p95": 665.9217500127852
  },
  "baseline_keep": 0.7679425837320574,
  "threshold": 0.8038277511961722

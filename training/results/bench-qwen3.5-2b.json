@@ -2,6 +2,7 @@
  "name": "qwen3.5-2b",
  "label": "Qwen3.5-2B (same recipe)",
  "where": "Local \u00b7 llama.cpp \u00b7 Q8_0, 2.0 GB",
+ "previous": "previous candidate, v1 state",
  "n": 418,
  "right_action": 0.937799043062201,
  "kept_when_it_should": 0.9719626168224299,

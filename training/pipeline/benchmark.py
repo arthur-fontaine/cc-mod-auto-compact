@@ -27,13 +27,19 @@ DATA, RESULTS = ROOT / "data", ROOT / "results"
 AUTO_CONFIDENCE = 0.85
 TIMEOUT_MS = 4000  # the mod's default: past it, it keeps the context
 
-# name, label, where it runs, predictions on test, predictions on held-out splices
+# name, label, where it runs, predictions on test, predictions on held-out splices, and for a model
+# measured on the v1 state (trained on it, so not asked the v2 request) a note saying so.
+# Every other row got the v2 request (PLAN.md 2): memory, the agent's last reply, the new message.
 CONTENDERS = [
-    ("spisev", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "qwen3-1.7b", "qwen3-1.7b-splices"),
-    ("qwen3.5-2b", "Qwen3.5-2B (same recipe)", "Local · llama.cpp · Q8_0, 2.0 GB", "qwen3.5-2b", "qwen3.5-2b-splices"),
-    ("kev-4b", "Kev-4B (zero-shot)", "Local · llama.cpp · Q8_0, 4.5 GB", "kev-4b", "kev-4b-splices"),
-    ("elephant", "Elephant 9B", "Cloud · Baseten", "elephant", "elephant-splices"),
-    ("mammoth", "Mammoth 27B", "Cloud · Baseten", "mammoth", None),
+    ("spisev", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "spisev-v2", "spisev-v2-splices", None),
+    ("kev-4b", "Kev-4B (zero-shot)", "Local · llama.cpp · Q8_0, 4.5 GB", "kev-4b-v2", "kev-4b-v2-splices", None),
+    ("elephant", "Elephant 9B", "Cloud · Baseten", "elephant-v2", "elephant-v2-splices", None),
+    ("mammoth", "Mammoth 27B", "Cloud · Baseten", "mammoth-v2", "mammoth-v2-splices", None),
+    ("jev", "Jev 1.13", "Cloud · OpenCode Zen", "jev-v2", "jev-v2-splices", None),
+    ("spisev-previous", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "qwen3-1.7b", "qwen3-1.7b-splices",
+     "alpha.1, previous version, v1 state"),
+    ("qwen3.5-2b", "Qwen3.5-2B (same recipe)", "Local · llama.cpp · Q8_0, 2.0 GB", "qwen3.5-2b", "qwen3.5-2b-splices",
+     "previous candidate, v1 state"),
 ]
 
 
@@ -115,7 +121,7 @@ def main():
     base = baseline_accuracy(g)
     bar = threshold(len(g), base)
     results = {}
-    for name, label, where, test_name, splice_name in CONTENDERS:
+    for name, label, where, test_name, splice_name, previous in CONTENDERS:
         preds = predictions(test_name, splice_name)
         if not preds:
             print(f"{name}: no predictions, skipped", file=sys.stderr)
@@ -124,16 +130,18 @@ def main():
         results[name] = s
         out = {k: v for k, v in s.items() if k != "rows"}
         (RESULTS / f"bench-{name}.json").write_text(json.dumps(
-            {"name": name, "label": label, "where": where, **out, "baseline_keep": base, "threshold": bar}, indent=1))
+            {"name": name, "label": label, "where": where, "previous": previous, **out, "baseline_keep": base,
+             "threshold": bar}, indent=1))
     keep_only = {pid: (None, None) for pid in g}
     print(f"Answer key: {len(g)} points (both teachers agree on the action); always keep: {pct(base)}; "
           f"beats it at p < 0.05 from {pct(bar)}\n")
     print("| Model | Runs | Right action | Kept when it should | Acted when it should | Right action, auto mode "
           "| Right category | Latency p50 / p95 |")
     print("| :- | :- | -: | -: | -: | -: | -: | -: |")
-    for name, label, where, *_ in CONTENDERS:
+    for name, label, where, _, _, previous in CONTENDERS:
         if name not in results:
             continue
+        label = f"{label}, *{previous}*" if previous else f"**{label}**" if name == "spisev" else label
         s = results[name]
         lat = s["latency_ms"]
         latency = f"{lat['p50']:.0f} / {lat['p95']:.0f} ms" if lat else ""

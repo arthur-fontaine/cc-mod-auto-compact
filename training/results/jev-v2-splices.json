@@ -1,0 +1,17 @@
+{
+ "name": "jev-v2-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.8222222222222222,
+ "kl": 0.3739107527262825,
+ "ece": 0.10166666666666667,
+ "independent_precision": 1.0,
+ "independent_n": 59,
+ "action_agreement": 0.8222222222222222,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 461.7,
+  "p95": 597.9,
+  "max": 1232.8
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "name": "kev-4b-v2-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.7555555555555555,
+ "kl": 0.5750969544203195,
+ "ece": 0.30922055652357383,
+ "independent_precision": 1.0,
+ "independent_n": 64,
+ "action_agreement": 0.7555555555555555,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 1678.3301669638604,
+  "p95": 3102.6224170345813,
+  "max": 4380.615834030323
+ }
+}

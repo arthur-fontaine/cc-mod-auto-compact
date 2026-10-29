@@ -2,17 +2,18 @@
  "name": "mammoth",
  "label": "Mammoth 27B",
  "where": "Cloud \u00b7 Baseten",
+ "previous": null,
  "n": 418,
- "right_action": 0.9688995215311005,
- "kept_when_it_should": 0.9844236760124611,
- "acted_when_it_should": 0.9175257731958762,
- "right_action_applied": 0.9186602870813397,
- "right_category": 0.8680738786279684,
+ "right_action": 0.9473684210526315,
+ "kept_when_it_should": 0.9626168224299065,
+ "acted_when_it_should": 0.8969072164948454,
+ "right_action_applied": 0.8995215311004785,
+ "right_category": 0.8443271767810027,
  "errors": 0,
- "timeouts": 0,
+ "timeouts": 4,
  "latency_ms": {
-  "p50": 225.2,
-  "p95": 414.7
+  "p50": 233.2,
+  "p95": 340.1
  },
  "baseline_keep": 0.7679425837320574,
  "threshold": 0.8038277511961722

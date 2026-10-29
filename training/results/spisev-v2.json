@@ -1,0 +1,17 @@
+{
+ "name": "spisev-v2",
+ "split": "test",
+ "n": 345,
+ "agreement": 0.8115942028985508,
+ "kl": 0.1855847036077167,
+ "ece": 0.10677211533592268,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9565217391304348,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 283.5627499734983,
+  "p95": 654.9037500517443,
+  "max": 960.4941250290722
+ }
+}
