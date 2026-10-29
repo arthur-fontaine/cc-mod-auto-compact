@@ -226,6 +226,28 @@ test('turn.complete builds the summaries with the pinned Haiku and saves them; t
   expect(seen.requests[0].body.state.conversation).toContain('3+1|task: verbose flag [done]')
 })
 
+test('with Spisev, turn.complete prefills the state without a message', async ($, on) => {
+  const env = { AUTO_COMPACT_PROVIDER: 'spisev', AUTO_COMPACT_DATA_DIR: '/data', HOME: '/home/u' }
+  const models = { status: 200, ok: true, headers: {}, text: JSON.stringify({ data: [{ id: 'spisev-alpha' }] }) }
+  const seen = stub(on, { env, fetch: (e) => ({ value: String(e.url).endsWith('/v1/models') ? models : answer('follow_up', 0.92) }) })
+  await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
+  await seen.clock.advance(0)
+  const asks = () => seen.requests.filter((r) => r.url.endsWith('/v1/systemone'))
+  expect(asks().length).toBe(1)
+  expect(asks()[0].body.state.latest_user_message).toBe('')
+  await submit($, 'one more thing')
+  // The decision's state starts with exactly what was prefilled.
+  expect(asks()[1].body.state.conversation).toBe(asks()[0].body.state.conversation)
+  expect(asks()[1].body.state.latest_user_message).toBe('one more thing')
+})
+
+test('a cloud provider is never sent a prefill', async ($, on) => {
+  const seen = stub(on)
+  await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
+  await seen.clock.advance(0)
+  expect(seen.requests.length).toBe(0)
+})
+
 test('a missing summary keeps the context and says summaries are catching up', async ($, on) => {
   const rows = [...ROWS.slice(0, 3), { role: 'assistant', text: 'Long reply. '.repeat(100), toolUses: [] }]
   const seen = stub(on, { rows })

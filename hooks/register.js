@@ -296,6 +296,21 @@ async function askProvider($, config, state) {
   return JSON.parse(response.text)
 }
 
+// Everything before the next message is known once a turn ends: llama-server reads it now, while
+// the person reads and types, and keeps it in its prompt cache, so the decision has only the new
+// message left to read. Local only: a cloud provider would bill each of these requests.
+async function prefill($, config) {
+  if (config.provider !== 'spisev' || (await startSpisev($, config)) !== 'ready') return
+  try {
+    const msgs = await sessionMessages($)
+    if (msgs.length < 2) return
+    const view = await treeTexts($, msgs, { allowCalls: false })
+    await askProvider($, config, clipState(tree.viewText(view), ''))
+  } catch (error) {
+    debug($, '[auto-compact] prefill: ' + error.message)
+  }
+}
+
 async function perform($, decision, view, prompt) {
   if (decision.action === 'clear') {
     // The engine's own /clear, queued for once the session is idle; the prompt is sent after it.
@@ -538,6 +553,7 @@ export function register(on) {
     building = buildTree($).finally(() => {
       building = null
     })
+    void building.then(() => prefill($, config))
     await Promise.race([building, $.clock.sleep(BUILD_WAIT_MS)])
     return result
   })
