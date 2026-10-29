@@ -5,6 +5,7 @@
     uv run python pipeline/hindsight.py --teacher claude-opus-5-5
     uv run python pipeline/hindsight.py --gold          # -> data/labels/hindsight-gold.jsonl
     uv run python pipeline/hindsight.py --split dev ...  # the same on dev, to choose a format (PLAN.md 3)
+    uv run python pipeline/hindsight.py --split tune --neutral; ... --gold --teachers claude-sonnet-5-5
 
 Mammoth is the teacher the student copies, so scoring Mammoth against itself says nothing.
 As in Nisev's test set, two Claude teachers label each held-out test prompt independently,
@@ -80,7 +81,8 @@ def items(splices=False, split="test", neutral=False):
     """Held-out test prompts, or with `splices` the held-out splices (pipeline/heldout_splices.py),
     or the prompts of another split."""
     suffix = "-test-splices" if splices else ""
-    points = [json.loads(line) for line in (DATA / f"points{suffix}.jsonl").open()]
+    # The tuning sample (tune_split.py) is train points under their own split name.
+    points = [json.loads(line) for line in (DATA / f"points{'-tune' if split == 'tune' else suffix}.jsonl").open()]
     points = [p for p in points if p["split"] in ((split,) if split != "test" else ("test", "test-splices"))]
     states = {s["id"]: s["state"] for s in map(json.loads, (DATA / f"states{suffix}.jsonl").open())}
     keys = {p["session_key"] for p in points} | {p["context_key"] for p in points}
@@ -170,15 +172,16 @@ def label(teacher, dry_run, splices=False, split="test", neutral=False):
 
 
 def gold(teachers, split="test", neutral=False):
+    """The points where the teachers agree; with one teacher, its labels (the tuning key)."""
     out, gold_path = paths(split, neutral)
     read = lambda t: {lab["id"]: lab for lab in map(json.loads, Path(str(out).format(teacher=t)).open())}
-    a, b = (read(t) for t in teachers)
+    a, b = (read(t) for t in (teachers * 2)[:2])
     both = sorted(set(a) & set(b))
     rows = []
     for i in both:
         ca, cb = a[i]["category"], b[i]["category"]
         rows.append({"id": i, "category": ca if ca == cb else None, "action": action(ca) if action(ca) == action(cb) else None,
-                     "teachers": {teachers[0]: ca, teachers[1]: cb}})
+                     "teachers": {t: lab for t, lab in zip(teachers, (ca, cb))}})
     gold_path.write_text("".join(json.dumps(r) + "\n" for r in rows))
     cat = [r for r in rows if r["category"]]
     act = [r for r in rows if r["action"]]
@@ -193,13 +196,15 @@ def main():
     parser.add_argument("--teacher", default="claude-sonnet-5-5")
     parser.add_argument("--gold", action="store_true")
     parser.add_argument("--splices", action="store_true", help="Label the held-out splices instead")
-    parser.add_argument("--split", default="test", choices=["test", "dev"])
+    parser.add_argument("--split", default="test", choices=["test", "dev", "tune"])
+    parser.add_argument("--teachers", nargs="+", default=["claude-sonnet-5-5", "claude-opus-5-5"],
+                        help="With --gold: one teacher or two")
     parser.add_argument("--neutral", action="store_true", help="Teachers see raw messages, no summary line")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     load_env()
     if args.gold:
-        gold(["claude-sonnet-5-5", "claude-opus-5-5"], args.split, args.neutral)
+        gold(args.teachers, args.split, args.neutral)
     else:
         label(args.teacher, args.dry_run, args.splices, args.split, args.neutral)
 

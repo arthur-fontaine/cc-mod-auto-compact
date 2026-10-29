@@ -2,6 +2,7 @@
 
     uv run python pipeline/choose_format.py mammoth-v1-dev mammoth-v2-128-dev mammoth-v2-192-dev ...
     uv run python pipeline/choose_format.py --neutral ...   # the key whose teachers read no summary line
+    uv run python pipeline/choose_format.py --split tune --neutral ...   # the tuning key (tune_split.py)
 
 Each name is a predictions file in results/ (evaluate.py). The first is the reference: every
 other is compared with it point by point (exact McNemar on right action and on right category).
@@ -16,8 +17,8 @@ from hindsight import paths  # noqa: E402
 from metrics import mcnemar_exact  # noqa: E402
 
 
-def dev_gold(neutral=False):
-    return {g["id"]: g for g in map(json.loads, paths("dev", neutral)[1].open()) if g["action"]}
+def dev_gold(neutral=False, split="dev"):
+    return {g["id"]: g for g in map(json.loads, paths(split, neutral)[1].open()) if g["action"]}
 
 
 def predictions(name):
@@ -35,11 +36,12 @@ def compare(rows, ref, field):
 
 def main(names):
     neutral = "--neutral" in names
-    names = [n for n in names if n != "--neutral"]
-    g = dev_gold(neutral)
+    split = names[names.index("--split") + 1] if "--split" in names else "dev"
+    names = [n for i, n in enumerate(names) if n not in ("--neutral", "--split") and names[i - 1:i] != ["--split"]]
+    g = dev_gold(neutral, split)
     scored = {n: benchmark.score(predictions(n), g) for n in names}
     ref = scored[names[0]]["rows"]
-    print(f"dev key: {len(g)} points; always keep {benchmark.pct(benchmark.baseline_accuracy(g))}\n")
+    print(f"{split} key: {len(g)} points; always keep {benchmark.pct(benchmark.baseline_accuracy(g))}\n")
     print("| Format | n | Right action | Acted when it should | Right category | vs first: action b/c p | category b/c p |")
     print("| :- | -: | -: | -: | -: | -: | -: |")
     out = {}
@@ -49,7 +51,7 @@ def main(names):
         print(f"| {n} | {s['n']} | {benchmark.pct(s['right_action'])} | {benchmark.pct(s['acted_when_it_should'])} "
               f"| {benchmark.pct(s['right_category'])} | {ba}/{ca} p={pa:.3f} | {bc}/{cc} p={pc:.3f} |")
         out[n] = {k: v for k, v in s.items() if k != "rows"}
-    (benchmark.RESULTS / "choose-format.json").write_text(json.dumps(out, indent=1))
+    (benchmark.RESULTS / f"choose-format{'' if split == 'dev' else '-' + split}{'-neutral' if neutral else ''}.json").write_text(json.dumps(out, indent=1))
 
 
 if __name__ == "__main__":
