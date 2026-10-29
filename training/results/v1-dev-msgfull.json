@@ -1,0 +1,17 @@
+{
+ "name": "v1-dev-msgfull",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8270676691729323,
+ "kl": 0.11404567387724575,
+ "ece": 0.14258053164924087,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9097744360902256,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 235.04049994517118,
+  "p95": 2650.0975840026513,
+  "max": 10511.650583008304
+ }
+}

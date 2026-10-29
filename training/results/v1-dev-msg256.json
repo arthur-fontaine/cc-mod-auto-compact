@@ -1,0 +1,17 @@
+{
+ "name": "v1-dev-msg256",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8270676691729323,
+ "kl": 0.11372797242318405,
+ "ece": 0.13498997029951607,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9097744360902256,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 236.5417080000043,
+  "p95": 2654.8515419708565,
+  "max": 4090.8527499996126
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "name": "v1-dev-msg1024",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8270676691729323,
+ "kl": 0.11434117621177568,
+ "ece": 0.13857485295000987,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9097744360902256,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 211.3748750416562,
+  "p95": 2423.807124956511,
+  "max": 4214.23549996689
+ }
+}
