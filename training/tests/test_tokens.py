@@ -30,6 +30,12 @@ class TokensTest(unittest.TestCase):
         text = tokens.render(a)
         self.assertGreater(out["reused"], text.index('"conversation": "') + len("0+1|user: a"))
 
+    def test_v2_parts_add_up(self):
+        state = {"memory": "0+1|user: fix the login", "last_agent_message": "Fixed. Commit?", "latest_user_message": "yes"}
+        out, ids = tokens.breakdown(state, chars)
+        self.assertEqual(out["fixed"] + out["conversation"] + out["agent"] + out["message"], out["total"])
+        self.assertEqual((out["agent"], out["message"], out["lines"]), (14, 3, 1))
+
     def test_line_kind(self):
         self.assertEqual(tokens.line_kind("4+4|task: x [done]"), "merged")
         self.assertEqual(tokens.line_kind("7+1|task: x [done]"), "task")
