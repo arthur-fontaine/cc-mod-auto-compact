@@ -36,7 +36,8 @@ Then pick a provider with `/auto-compact setup`. Until then the mod does nothing
 ## Privacy
 
 With Spisev nothing leaves the machine. With a cloud provider, only the clipped state goes
-out: the session's summary lines and the new prompt. The summaries themselves are written by
+out: the session's memory lines, the agent's last reply (its text, up to 1.5 KB, without tool
+calls) and the new prompt. The memory lines themselves are written by
 Claude Haiku through your own Claude Code session (`$.model.complete`), like any other request
 of the session.
 
@@ -45,7 +46,7 @@ of the session.
 - `/auto-compact`: the provider, the mode, the state of the summary tree and the last decision.
 - `/auto-compact setup`: choose a provider.
 - `/auto-compact mode off|suggest|auto`: saved across sessions.
-- `/auto-compact debug`: a pane with the last prompt looked at, the summary lines sent with it (each marked `raw`, `joined` or `summary`, with its size in bytes and, when not summarized, the room left before the 512-byte limit; a summary has what it was made from dimmed under it), and the decision (each category's probability, the action and what came of it).
+- `/auto-compact debug`: a pane with the last prompt looked at, the memory lines sent with it (each marked `raw`, `joined` or `summary`, with its size in bytes and, when not summarized, the room left before the 128-byte limit; a summary has what it was made from dimmed under it), and the decision (each category's probability, the action and what came of it).
 
 In **suggest** mode (the default), a prompt that looks like a related, returning or unrelated
 task opens a question before it is sent: compact (or clear) first, or send it as is. Nothing
@@ -58,7 +59,7 @@ previous turn's summaries are still being built (the status line says
 `auto-compact: summaries catching up`).
 
 Acting holds the prompt back (Claude Code does not compact under a prompt being submitted),
-compacts with the current summary lines as what to keep, or runs `/clear`, then sends the same
+compacts with the current memory lines as what to keep, or runs `/clear`, then sends the same
 prompt. A prompt with attachments is never held back. The footer shows each decision:
 `context kept · 92%`, `compact? related · 71%`, `cleared · independent · 91%`; the debug log has
 `[auto-compact] <category> · <confidence> → <action>`.
@@ -84,10 +85,14 @@ prompt. A prompt with attachments is never held back. The footer shows each deci
 
 After each turn the mod summarizes the new messages with Haiku into an
 [OptChat](https://gist.github.com/VictorTaelin/91837951a5ce5b38f341ec1ba1df6449) tree: each message
-becomes a line of at most 512 bytes, and adjacent lines merge in pairs. On each prompt it sends
-the view (the last 16 messages one line each, older ones as coarser lines) and the prompt to
-the decision model, clipped to 12,000 tokens, and maps the category it picks through an
-editable table. The same code builds the training data
+becomes a line of at most 128 bytes that names its task and how the task stands, and adjacent
+lines merge in pairs. The memory grows by one line a message and, past 16 lines, merges back
+to 10 in one batch ([UniiChat](https://gist.github.com/VictorTaelin/91837951a5ce5b38f341ec1ba1df6449)'s
+sawtooth), so between batches it only changes at its end. On each prompt the mod sends the
+decision model that memory, the agent's last reply as it was written (up to 1.5 KB, cut in
+the middle) and the prompt (up to 512 tokens), and maps the category it picks through an
+editable table. Everything but the prompt is known when the turn ends, which is what the
+prefill below relies on. The same code builds the training data
 ([training/README.md](training/README.md)); parity tests check that the mod and the pipeline
 clip, summarize and ask alike.
 
