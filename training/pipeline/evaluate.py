@@ -6,6 +6,7 @@
     uv run python pipeline/evaluate.py --mammoth --name mammoth          # its latency, one request at a time
     uv run python pipeline/evaluate.py --mammoth --states data/states-v2-160.jsonl --split dev --name mammoth-v2-160-dev
     uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
+    uv run python pipeline/evaluate.py --claude claude-haiku-5-5 --split dev --name haiku-v1-dev   # claude_teacher.py
     uv run python pipeline/alpha_report.py                               # the section 11 table
 
 Mammoth is the reference: top-1 agreement with its pick, KL to its distribution,
@@ -54,6 +55,7 @@ def main():
     parser.add_argument("--endpoint", help="A System One endpoint (llama-server)")
     parser.add_argument("--mammoth", action="store_true", help="Re-ask Mammoth one request at a time for latency")
     parser.add_argument("--cloud", metavar="MODEL", help="Another model on the teacher's System One endpoint")
+    parser.add_argument("--claude", metavar="MODEL", help="A Claude model through claude -p (claude_teacher.py)")
     parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
     parser.add_argument("--message-tokens", type=int, help="Clip each new message to this many (estimated) tokens")
     parser.add_argument("--warm", action="store_true", help="With --endpoint: prefill each state without its message first")
@@ -125,8 +127,27 @@ def main():
             for e in rows:
                 entry, _ = labeler.label(request_for(e["state"], model))
                 preds.append((entry["probabilities"], entry["latency_ms"]))
+    elif args.claude:
+        import concurrent.futures as cf
+        import claude_teacher
+        from config import guard_spend
+        if not guard_spend(args.claude, calls=len(rows), billed_usd=0.0, list_usd=None, dry_run=args.dry_run):
+            return
+
+        def one(e):
+            try:
+                category, ms = claude_teacher.ask(args.claude, e["state"])
+            except Exception as err:
+                print(f"{e['id']}: {str(err)[:120]}", file=sys.stderr, flush=True)
+                return None, 0.0
+            return {c: float(c == category) for c in CATEGORIES}, ms
+        with cf.ThreadPoolExecutor(4) as pool:
+            for i, pred in enumerate(pool.map(one, rows), 1):
+                preds.append(pred)
+                if i % 25 == 0:
+                    print(f"[{args.claude}] {i}/{len(rows)}", file=sys.stderr, flush=True)
     else:
-        parser.error("give --model, --endpoint, --mammoth or --cloud")
+        parser.error("give --model, --endpoint, --mammoth, --cloud or --claude")
 
     answered = [(p, e) for (p, _), e in zip(preds, rows) if p is not None]
     scored = score([{"probs": p, "reference": dict(zip(CATEGORIES, e["targets"])), "weak": e.get("weak")}
