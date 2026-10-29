@@ -137,6 +137,12 @@ read off the results:
 - **Right category**: the exact category, on the 379 points where the teachers also agreed
   on it.
 
+The table times cold requests. Since 0.1.3 the mod sends Spisev the session once a turn
+ends, while the developer reads and types, so llama-server has all but the new message in
+its cache; it also clips that message to 512 tokens. Measured that way on the same points,
+Spisev answers in 60 / 445 ms (p50 / p95, against 153 / 2,487 ms cold), with no timeout and
+the same accuracy (93.5% right action, one point apart from the cold run).
+
 What stands out:
 
 - **Every model beats always keeping**, compared point by point (one-sided exact McNemar

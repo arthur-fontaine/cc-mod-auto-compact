@@ -1,7 +1,7 @@
 {
   "name": "auto-compact",
   "displayName": "Auto Compact",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Spots task boundaries in Claude Code sessions with a System One decision model and offers to compact or clear the context",
   "author": {
     "name": "Arthur Fontaine"
