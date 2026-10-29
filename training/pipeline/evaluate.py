@@ -63,6 +63,9 @@ def main():
     parser.add_argument("--states", type=Path, help="Ask with these states (build_tree.py output) for the split's points")
     parser.add_argument("--keep-cache", action="store_true",
                         help="With --mammoth: use the teacher's answer cache (no fresh latency, no repeat calls)")
+    parser.add_argument("--eval-cache", action="store_true",
+                        help="With --mammoth: a cache and a version pin of their own (data/teacher-cache-eval), so an "
+                             "evaluation can follow a newly served version without touching the training labels'")
     parser.add_argument("--dry-run", action="store_true", help="With --mammoth or --cloud: print the estimate only")
     args = parser.parse_args()
     from config import load_env
@@ -106,7 +109,8 @@ def main():
         from config import guard_spend
         endpoint, key, model = teacher.settings()
         model = args.cloud or model
-        known = teacher.Cache() if args.keep_cache and not args.cloud else None
+        eval_dir = ROOT / "data" / "teacher-cache-eval"
+        known = teacher.Cache(eval_dir) if args.eval_cache else teacher.Cache() if args.keep_cache and not args.cloud else None
         todo = [e for e in rows if not (known and known.get(teacher.cache_key(model, request_for(e["state"], model))))]
         tokens = sum(state_size(e["state"])["est_tokens"] for e in todo)
         billed = tokens * teacher.billed_price() / 1e6 if todo and not args.cloud else 0.0
@@ -115,7 +119,7 @@ def main():
             return
         with tempfile.TemporaryDirectory() as tmp:
             # Another model is served under its own versions: keep them out of the teacher's state.
-            state = Path(tmp) / "state.json" if args.cloud else teacher.STATE
+            state = Path(tmp) / "state.json" if args.cloud else eval_dir / "state.json" if args.eval_cache else teacher.STATE
             cache = known or teacher.Cache(Path(tmp))
             labeler = teacher.Labeler(endpoint, key, model, cache, start_concurrency=1, state=state)
             for e in rows:
