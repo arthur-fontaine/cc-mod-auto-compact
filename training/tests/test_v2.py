@@ -74,6 +74,15 @@ class StateV2Test(unittest.TestCase):
         self.assertIsNone(last)
 
 
+class MessageClipTest(unittest.TestCase):
+    def test_v1_message_is_clipped_to_its_token_budget(self):
+        message = "start " + "word " * 5000 + "end"
+        out = task.clip_state("0+1|user: hi", message)["latest_user_message"]
+        self.assertLessEqual(utf8_len(out), task.MAX_MESSAGE_TOKENS * text.BYTES_PER_TOKEN)
+        self.assertTrue(out.startswith("start ") and out.endswith("end"))
+        self.assertEqual(task.clip_state("0+1|user: hi", "short")["latest_user_message"], "short")
+
+
 class PromptV2Test(unittest.TestCase):
     def test_limit_and_ruler(self):
         p = summarizer.system_prompt_v2(192)

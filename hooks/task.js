@@ -25,6 +25,8 @@ export const CRITERIA = {
 
 export const MAX_TOKENS = 12_000
 export const MAX_MESSAGE_BYTES = 24_000
+// The new message is read after the developer sends it: the decision's latency.
+export const MAX_MESSAGE_TOKENS = 512
 export const MAX_CONVERSATION_BYTES = 20_000
 
 export function question() {
@@ -45,7 +47,7 @@ export function neutralize(text) {
 export function clipState(conversation, message) {
   conversation = clip(neutralize(conversation), MAX_CONVERSATION_BYTES)
   message = neutralize(message)
-  let room = MAX_TOKENS - fixedTokens() - estimateTokens(pyJson(conversation)) - 16
+  let room = Math.min(MAX_TOKENS - fixedTokens() - estimateTokens(pyJson(conversation)) - 16, MAX_MESSAGE_TOKENS)
   const state = { conversation, latest_user_message: clip(message, MAX_MESSAGE_BYTES, Math.max(room, 64)) }
   for (let i = 0; i < 4; i++) {
     const over = sentTokens(state) - MAX_TOKENS
@@ -71,7 +73,6 @@ export const INSTRUCTIONS_V2 =
   'in the conversation? The answer decides how much of the conversation the agent keeps in its context.'
 export const MAX_MEMORY_BYTES = 4_000
 export const MAX_AGENT_MESSAGE_BYTES = 1_536
-export const MAX_MESSAGE_TOKENS = 512
 
 export function questionV2() {
   return { type: 'choice', instructions: INSTRUCTIONS_V2, criteria: { ...CRITERIA } }
