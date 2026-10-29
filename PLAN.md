@@ -84,8 +84,11 @@ Memory (prompts/compact.md v2, `tree`, `view`):
   low mark), so the memory changes only at its end between batches. Marks set so state
   stays under ~1,000 tokens (memory ≤ ~600).
 - Python pipeline and JS mod keep one implementation each, checked by the parity tests.
-- Gate: unit and parity tests pass; on 20 real sessions, memory p95 ≤ 600 tokens and cache
-  reuse between consecutive states ≥ 80%.
+- Gate: unit and parity tests pass; on 20 real sessions, memory p95 ≤ 600 tokens and, with
+  the state prefilled, tokens left to read after send p95 ≤ 600. (Was "cache reuse between
+  consecutive states ≥ 80%", which v2 cannot reach by design: the agent's last reply changes
+  every turn. Replaced with what it stood for, Arthur's go on 2026-10-29.) A line size that
+  fails this gate is not a phase 3 candidate.
 
 ## 3. Teacher check before relabeling
 
@@ -131,3 +134,4 @@ Pick the format on dev, never on test:
 | 2026-10-29 | analysis | Numbers in [Why](#why), from the 345 test states and the live tree of one session. |
 | 2026-10-29 | 0 · passed | Spisev v1 rerun on the 418 points: right action 93.3%, acted 79.4%, category 81.5%, auto 87.1%, the README's to 0.0 point. Latency p50 / p95: cold 153 / 2,487 ms (4 timeouts), prefilled 54 / 284 ms (1 timeout), same answers. Tokens left after prefill: p50 23, p95 351, max 9,577 (one long message). By state size (test + splices), right category Spisev / Mammoth: < 500 88.2 / 94.1%, 500–1k 88.7 / 87.2%, 1–2k 70.9 / 86.1%, 2–4k 71.7 / 83.0%, 4k+ 50.0 / 80.0%. Dev key (`hindsight.py --split dev`): 249 of 266 points where both teachers agree on the action, only 14 that act (no splices on dev), always keep 94.4%: on dev, right category (216 points) is what separates formats. |
 | 2026-10-29 | 1 · passed | Message clip chosen on dev: 1,024, 512 and 256 tokens change none of Spisev's 266 picks; 512 kept for margin. On the 418 points, prefilled and clipped: right action 93.5% (v1 93.3%, McNemar 1 point to 0, p = 1.0), acted 80.4%, category 82.1%, auto 87.3%, no timeout; latency p50 60 ms (gate ≤ 100), p95 445 ms, max 2.1 s. The slowest decisions had 21–77 tokens left to read, so the p95 here is machine noise, not prefill. Released locally as 0.1.3 (not pushed). |
+| 2026-10-29 | 2 · passed | v2 built in Python and JS (parity tests, 94 Python and 41 mod tests pass). First dev build audited and fixed before any Mammoth call: Haiku copied `id+n|` names and backticks into lines, kept quotes untranslated, and almost never used `left` (1 of 483 statuses); prompt and cleaning fixed, dev rebuilt (Haiku, subscription). At 128 bytes over the 69 dev sessions: memory p50 150 / p95 490 / max 608 tokens, whole state p50 876 / p95 1,380 (v1 dev-like states reach 10k), tokens left after prefill p50 21 / p95 322; statuses now include 22 left and 97 done. The reuse gate as first written failed (whole prompt 53%, memory lines kept 78%, a rewrite at 13% of decisions) and was replaced, see the gate. |
