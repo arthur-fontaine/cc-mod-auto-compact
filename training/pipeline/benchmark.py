@@ -3,6 +3,7 @@
     uv run python pipeline/hindsight.py ...                 # the answer key (see its docstring)
     uv run python pipeline/evaluate.py --endpoint ... --name NAME [--split test-splices --name NAME-splices]
     uv run python pipeline/benchmark.py                     # -> results/bench-*.json and the table
+    uv run python pipeline/benchmark.py --neutral           # the key whose teachers saw no summary line
     uv run python pipeline/plot.py                          # -> ../docs/benchmark.svg
 
 The points are the held-out test prompts and the held-out splices (a session's end followed
@@ -47,8 +48,9 @@ def read(path):
     return [json.loads(line) for line in path.open()] if path.exists() else []
 
 
-def gold():
-    return {g["id"]: g for g in read(DATA / "labels" / "hindsight-gold.jsonl") if g["action"]}
+def gold(neutral=False):
+    name = "hindsight-neutral-gold.jsonl" if neutral else "hindsight-gold.jsonl"
+    return {g["id"]: g for g in read(DATA / "labels" / name) if g["action"]}
 
 
 def predictions(test_name, splice_name):
@@ -117,7 +119,8 @@ def pct(x):
 
 
 def main():
-    g = gold()
+    neutral = "--neutral" in sys.argv[1:]
+    g = gold(neutral)
     base = baseline_accuracy(g)
     bar = threshold(len(g), base)
     results = {}
@@ -129,7 +132,7 @@ def main():
         s = score(preds, g)
         results[name] = s
         out = {k: v for k, v in s.items() if k != "rows"}
-        (RESULTS / f"bench-{name}.json").write_text(json.dumps(
+        (RESULTS / f"bench-{'neutral-' if neutral else ''}{name}.json").write_text(json.dumps(
             {"name": name, "label": label, "where": where, "previous": previous, **out, "baseline_keep": base,
              "threshold": bar}, indent=1))
     keep_only = {pid: (None, None) for pid in g}

@@ -1,0 +1,20 @@
+{
+ "name": "elephant",
+ "label": "Elephant 9B",
+ "where": "Cloud \u00b7 Baseten",
+ "previous": null,
+ "n": 416,
+ "right_action": 0.9447115384615384,
+ "kept_when_it_should": 0.9721362229102167,
+ "acted_when_it_should": 0.8494623655913979,
+ "right_action_applied": 0.8894230769230769,
+ "right_category": 0.7046070460704607,
+ "errors": 0,
+ "timeouts": 0,
+ "latency_ms": {
+  "p50": 193.5,
+  "p95": 246.4
+ },
+ "baseline_keep": 0.7764423076923077,
+ "threshold": 0.8125
+}

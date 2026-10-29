@@ -1,0 +1,20 @@
+{
+ "name": "spisev-previous",
+ "label": "Spisev 1.7B",
+ "where": "Local \u00b7 llama.cpp \u00b7 Q8_0, 1.8 GB",
+ "previous": "alpha.1, previous version, v1 state",
+ "n": 416,
+ "right_action": 0.9495192307692307,
+ "kept_when_it_should": 0.9721362229102167,
+ "acted_when_it_should": 0.8709677419354839,
+ "right_action_applied": 0.8798076923076923,
+ "right_category": 0.8346883468834688,
+ "errors": 0,
+ "timeouts": 3,
+ "latency_ms": {
+  "p50": 144.17520799906924,
+  "p95": 2607.413916994119
+ },
+ "baseline_keep": 0.7764423076923077,
+ "threshold": 0.8125
+}
