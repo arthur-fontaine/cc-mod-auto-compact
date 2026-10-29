@@ -147,7 +147,7 @@ def clean_line_v2(text):
 # The v2 memory (PLAN.md section 2): shorter lines, and UniiChat's batched merges so that
 # between two batches the memory only grows at its end and stays in the prompt cache.
 # Budgets are in lines, so the view is still known from t alone.
-MEMORY_LIMIT = 160
+MEMORY_LIMIT = 128
 MEMORY_LOW, MEMORY_HIGH = 10, 16
 _memory = {}
 

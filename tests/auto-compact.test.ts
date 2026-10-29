@@ -1,6 +1,9 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { FIXTURES } from './fixtures/parity.js'
+import { systemPromptV2 } from '../hooks/summarizer.js'
+import { questionV2 } from '../hooks/task.js'
+import { MEMORY_LIMIT } from '../hooks/tree.js'
 
 type Probabilities = Record<string, number>
 
@@ -47,7 +50,7 @@ function stub(on: any, { env = MAMMOTH, rows = ROWS, fetch, complete }: Setup = 
   on('session.id', () => ({ value: 'session-1' }))
   on('session.messages', () => ({ value: rows }))
   on('fs.read', ($: any, e: any) => {
-    if (String(e.path).endsWith('prompts/compact.md')) return { value: FIXTURES.compactPrompt }
+    if (String(e.path).endsWith('prompts/compact-v2.md')) return { value: FIXTURES.v2.promptTemplate }
     if (seen.writes.has(e.path)) return { value: seen.writes.get(e.path) }
     return { deny: 'ENOENT' }
   })
@@ -114,7 +117,7 @@ test('a follow-up keeps the context and logs the decision', async ($, on) => {
   expect(seen.labels).toContain('context kept · 92%')
 })
 
-test('the request is the state the model was trained on, sent with the configured auth', async ($, on) => {
+test('the request is the v2 state the model was trained on, sent with the configured auth', async ($, on) => {
   const seen = stub(on)
   await submit($, 'what is a monad?')
   const [req] = seen.requests
@@ -122,9 +125,12 @@ test('the request is the state the model was trained on, sent with the configure
   expect(req.headers.Authorization).toBe('Api-Key test-key')
   expect(req.body.model).toBe(MAMMOTH.AUTO_COMPACT_MODEL)
   expect(Object.keys(req.body)).toEqual(['model', 'state', 'questions'])
+  expect(Object.keys(req.body.state)).toEqual(['memory', 'last_agent_message', 'latest_user_message'])
   expect(req.body.state.latest_user_message).toBe('what is a monad?')
-  expect(req.body.state.conversation.split('\n')[0]).toBe('0+1|user: Add a --verbose flag to the CLI')
-  expect(req.body.questions.boundary.criteria).toEqual(FIXTURES.request.questions.boundary.criteria)
+  expect(req.body.state.memory.split('\n')[0]).toBe('0+1|user: Add a --verbose flag to the CLI')
+  expect(req.body.state.memory.split('\n').length).toBe(4)
+  expect(req.body.state.last_agent_message).toBe('Done.')
+  expect(req.body.questions.boundary).toEqual(questionV2())
 })
 
 test('in suggest mode nothing happens without the press', async ($, on) => {
@@ -217,13 +223,15 @@ test('turn.complete builds the summaries with the pinned Haiku and saves them; t
   const call = seen.completions[0]
   expect(call.model).toBe('claude-haiku-5-5')
   expect(call.effort).toBe('low')
-  expect(call.system).toBe(FIXTURES.compactPrompt)
+  expect(call.system).toBe(systemPromptV2(FIXTURES.v2.promptTemplate, MEMORY_LIMIT))
   expect(call.prompt).toContain('Compress message 3 into one line.')
   const saved = [...seen.writes.keys()]
   expect(saved).toEqual(['/data/trees/session-1.json'])
   await submit($, 'one more thing')
   expect(decisions(seen).length).toBe(1)
-  expect(seen.requests[0].body.state.conversation).toContain('3+1|task: verbose flag [done]')
+  expect(seen.requests[0].body.state.memory).toContain('3+1|task: verbose flag [done]')
+  // The reply raw, under its 1,536-byte budget, after the memory line that summarizes it.
+  expect(seen.requests[0].body.state.last_agent_message).toBe('Long reply. '.repeat(100).trim())
 })
 
 test('with Spisev, turn.complete prefills the state without a message', async ($, on) => {
@@ -237,7 +245,8 @@ test('with Spisev, turn.complete prefills the state without a message', async ($
   expect(asks()[0].body.state.latest_user_message).toBe('')
   await submit($, 'one more thing')
   // The decision's state starts with exactly what was prefilled.
-  expect(asks()[1].body.state.conversation).toBe(asks()[0].body.state.conversation)
+  expect(asks()[1].body.state.memory).toBe(asks()[0].body.state.memory)
+  expect(asks()[1].body.state.last_agent_message).toBe(asks()[0].body.state.last_agent_message)
   expect(asks()[1].body.state.latest_user_message).toBe('one more thing')
 })
 
@@ -276,7 +285,7 @@ test('the debug pane shows the message, the memory sent and the decision, on eve
     expect((await ui.find({ type: 'Text', text: /changelog entry/ }))?.text).toBe('and add a changelog entry for it')
     expect((await ui.find({ type: 'Text', text: /^Memory/ }))?.text).toBe('Memory · 4 lines over 4 messages')
     expect((await ui.find({ type: 'Text', text: /verbose flag to the CLI/ }))?.text).toBe('user: Add a --verbose flag to the CLI')
-    expect((await ui.find({ type: 'Text', text: /^raw/ }))?.text).toMatch(/^raw +37 B · 475 left$/)
+    expect((await ui.find({ type: 'Text', text: /^raw/ }))?.text).toMatch(/^raw +37 B · +91 left$/)
     expect((await ui.find({ type: 'Text', text: /follow_up ·/ }))?.text).toBe('follow_up · 92%')
     expect((await ui.find({ type: 'Text', text: /^outcome/ }))?.text).toBe('outcome: keep')
     await ui.unmount()
@@ -297,7 +306,8 @@ test('the debug pane marks a summarized line, with its size and the message it w
 })
 
 test('the debug pane marks two short messages merged without a call as joined', async ($, on) => {
-  stub(on, { rows: Array.from({ length: 9 }, () => ROWS).flat() })
+  stub(on, { rows: Array.from({ length: 18 }, () => ROWS.slice(2)).flat() })
+  await $.turn.complete({ turnId: 't1', answer: 'x', durationMs: 1, isAborted: false } as any)
   await submit($, 'one more thing')
   const ui = await $.ui.mount({ ...DEBUG_PANE, surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^joined/ }))?.text).toMatch(/^joined +\d+ B · +\d+ left$/)

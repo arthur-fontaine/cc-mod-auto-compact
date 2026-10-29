@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 
 import { decide, describe, headers, resolveConfig, SPISEV } from '../hooks/policy.js'
-import { clipState, request } from '../hooks/task.js'
+import { clipStateV2, requestV2 } from '../hooks/task.js'
 
 try {
   for (const line of readFileSync(new URL('../.env', import.meta.url), 'utf8').split('\n')) {
@@ -26,11 +26,12 @@ if (!config.provider || config.missing.length) {
   process.exit(1)
 }
 
-const CONVERSATION = [
-  '0+4|task: add a --verbose flag to the CLI [done]; user: "add a --verbose flag"; src/cli.py edited, tests pass',
+const MEMORY = [
+  '0+4|task: --verbose flag for the CLI [done]; user: "add a --verbose flag"; src/cli.py',
   '4+1|user: thanks, now document it in the README',
-  '5+1|agent: Added a "Verbose output" section to README.md.',
+  '5+1|= [done] agent added a "Verbose output" section to README.md',
 ].join('\n')
+const LAST_AGENT_MESSAGE = 'Added a "Verbose output" section to README.md, with an example run.'
 
 // [new message, the category a person would pick]
 const SAMPLES = [
@@ -46,7 +47,7 @@ for (const [message, expected] of SAMPLES) {
   const model = config.provider === 'spisev' ? SPISEV.alias : config.model
   const started = Date.now()
   const response = await fetch(config.endpoint, {
-    method: 'POST', headers: headers(config), body: JSON.stringify(request(clipState(CONVERSATION, message), model)),
+    method: 'POST', headers: headers(config), body: JSON.stringify(requestV2(clipStateV2(MEMORY, LAST_AGENT_MESSAGE, message), model)),
   })
   if (!response.ok) {
     console.error('HTTP ' + response.status + ' from ' + config.endpoint)

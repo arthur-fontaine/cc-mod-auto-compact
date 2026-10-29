@@ -102,7 +102,7 @@ export function shortest(lines) {
 
 // The v2 memory (memory_view in tree.py): shorter lines, and UniiChat's batched merges so that
 // between two batches the memory only grows at its end and stays in the prompt cache.
-export const MEMORY_LIMIT = 160
+export const MEMORY_LIMIT = 128
 export const MEMORY = { low: 10, high: 16 }
 const memories = new Map()
 

@@ -1,7 +1,7 @@
 // The debug pane: the last prompt the mod looked at, the memory it sent with it, and the decision.
 
 import { CATEGORIES } from './task.js'
-import { LIMIT } from './tree.js'
+import { MEMORY_LIMIT } from './tree.js'
 
 export const PANE = 'auto-compact-debug'
 export const TITLE = 'auto-compact debug'
@@ -16,7 +16,7 @@ const pct = (x) => Math.round(x * 100) + '%'
 function size(line) {
   if (!line) return ''
   const bytes = line.source.padEnd(7) + String(line.bytes).padStart(4) + ' B'
-  return line.source === 'summary' ? bytes : bytes + ' · ' + String(LIMIT - line.bytes).padStart(3) + ' left'
+  return line.source === 'summary' ? bytes : bytes + ' · ' + String(MEMORY_LIMIT - line.bytes).padStart(3) + ' left'
 }
 
 function clock(at) {

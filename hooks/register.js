@@ -5,8 +5,8 @@ import { parseBuild, parseServerOutput, serverArgs, serverCommand, servesOurMode
 import {
   SPISEV, compactInstructions, decide, describe, headers, logLine, MODES, PRESETS, resolveConfig,
 } from './policy.js'
-import { PROMPT_PATH, SUMMARIZER, summarize } from './summarizer.js'
-import { clipState, request } from './task.js'
+import { PROMPT_PATH_V2, SUMMARIZER, summarize, systemPromptV2 } from './summarizer.js'
+import { agentReply, clipStateV2, requestV2 } from './task.js'
 import { clip, cleanPrompt, messages, render, utf8Len } from './text.js'
 import * as tree from './tree.js'
 
@@ -15,6 +15,8 @@ const SUMMARY_CONCURRENCY = 4
 const BUILD_WAIT_MS = 120_000
 // What the debug pane keeps of a summary's input: a message can run to MAX_AGENT_BYTES.
 const INPUT_BYTES = 1024
+// The saved tree's format: v2 lines (128 bytes, compact-v2.md) never mix with a v1 session's.
+const TREE_VERSION = 2
 
 // The footer label, kept in $.state so a reload keeps it.
 const label = atom({ plugin: 'auto-compact', key: 'label' }, null)
@@ -99,7 +101,9 @@ async function dataDir($) {
 }
 
 async function system($) {
-  if (systemPrompt === null) systemPrompt = await $.fs.read($.plugin.root + '/' + PROMPT_PATH)
+  if (systemPrompt === null) {
+    systemPrompt = systemPromptV2(await $.fs.read($.plugin.root + '/' + PROMPT_PATH_V2), tree.MEMORY_LIMIT)
+  }
   return systemPrompt
 }
 
@@ -113,7 +117,8 @@ async function loadNodes($) {
   if (nodes && nodesPath === path) return nodes
   nodesPath = path
   try {
-    nodes = JSON.parse(await $.fs.read(path)).nodes ?? {}
+    const saved = JSON.parse(await $.fs.read(path))
+    nodes = saved.version === TREE_VERSION ? saved.nodes ?? {} : {}
   } catch {
     nodes = {}
   }
@@ -123,7 +128,7 @@ async function loadNodes($) {
 async function saveNodes($) {
   if (!nodesPath) return
   try {
-    await $.fs.write(nodesPath, JSON.stringify({ version: 1, summarizer: SUMMARIZER.model, nodes }))
+    await $.fs.write(nodesPath, JSON.stringify({ version: TREE_VERSION, summarizer: SUMMARIZER.model, nodes }))
   } catch (error) {
     debug($, '[auto-compact] could not save the tree: ' + error.message)
   }
@@ -131,9 +136,9 @@ async function saveNodes($) {
 
 class Missing extends Error {}
 
-// The text of every node the view at msgs.length needs, with where it came from: `raw` (the message,
-// under tree.LIMIT), `joined` (both halves, under tree.LIMIT together) or `summary` (the summarizer,
-// from the inputs given: the message, or both halves by name).
+// The text of every line of the memory at msgs.length (tree.memoryView), with where it came from:
+// `raw` (the message, under tree.MEMORY_LIMIT), `joined` (both halves, under it together) or `summary`
+// (the summarizer, from the inputs given: the message, or both halves by name).
 // With `allowCalls`, missing summaries are built with $.model.complete, up to SUMMARY_CONCURRENCY at
 // once; without, a missing one throws.
 async function treeTexts($, msgs, { allowCalls }) {
@@ -163,13 +168,13 @@ async function treeTexts($, msgs, { allowCalls }) {
     let source
     if (node[0] === 0) source = render(msgs[node[1]])
     else source = await Promise.all(tree.children(node).map(text))
-    const free = tree.noCallText(node, source)
+    const free = tree.noCallText(node, source, tree.MEMORY_LIMIT)
     sources.set(tree.key(node), free === null ? 'summary' : node[0] === 0 ? 'raw' : 'joined')
     if (free !== null) return free
     inputs.set(tree.key(node), node[0] === 0
       ? [{ name: null, text: source }]
       : tree.children(node).map((child, i) => ({ name: tree.name(child), text: source[i] })))
-    const context = await Promise.all(tree.contextView(node).map(async (n) => [n, await text(n)]))
+    const context = await Promise.all(tree.memoryContext(node).map(async (n) => [n, await text(n)]))
     const prompt = node[0] === 0
       ? tree.leafPrompt(node[1], source, context)
       : tree.mergePrompt(...tree.children(node), source[0], source[1], context)
@@ -178,15 +183,16 @@ async function treeTexts($, msgs, { allowCalls }) {
     if (!allowCalls) throw new Missing(tree.name(node))
     await slot()
     try {
-      const { line } = await summarize((r) => $.model.complete(r), prompt, sys, settings)
+      const { line } = await summarize((r) => $.model.complete(r), prompt, sys, settings,
+        { limit: tree.MEMORY_LIMIT, clean: tree.cleanLineV2 })
       store[id] = line
       return line
     } finally {
       release()
     }
   }
-  const lines = tree.view(msgs.length)
-  const order = tree.needed([lines])
+  const lines = tree.memoryView(msgs.length)
+  const order = tree.neededMemory([lines])
   const results = await Promise.allSettled(order.map(text))
   const failed = results.find((r) => r.status === 'rejected')
   if (failed) throw failed.reason
@@ -195,6 +201,11 @@ async function treeTexts($, msgs, { allowCalls }) {
 
 async function sessionMessages($) {
   return messages(await $.session.messages())
+}
+
+// The v2 state: the memory through the agent's last reply, that reply as it was written, the message.
+function stateOf(view, msgs, message) {
+  return clipStateV2(tree.viewText(view), agentReply(msgs[msgs.length - 1]), message)
 }
 
 async function buildTree($) {
@@ -287,7 +298,7 @@ async function spisevReady($, config) {
 async function askProvider($, config, state) {
   const model = config.provider === 'spisev' ? SPISEV.alias : config.model
   const call = $.http.fetch(config.endpoint, {
-    method: 'POST', headers: headers(config), body: JSON.stringify(request(state, model)),
+    method: 'POST', headers: headers(config), body: JSON.stringify(requestV2(state, model)),
   })
   const timeout = $.clock.sleep(config.timeoutMs).then(() => null)
   const response = await Promise.race([call, timeout])
@@ -305,7 +316,7 @@ async function prefill($, config) {
     const msgs = await sessionMessages($)
     if (msgs.length < 2) return
     const view = await treeTexts($, msgs, { allowCalls: false })
-    await askProvider($, config, clipState(tree.viewText(view), ''))
+    await askProvider($, config, stateOf(view, msgs, ''))
   } catch (error) {
     debug($, '[auto-compact] prefill: ' + error.message)
   }
@@ -367,9 +378,9 @@ async function onPrompt($, e) {
     return void (await skip('skipped (Spisev ' + server.state + ')'))
   }
   const viewText = tree.viewText(view)
-  const state = clipState(viewText, prompt)
+  const state = stateOf(view, msgs, prompt)
   seen.message = state.latest_user_message
-  seen.memory = state.conversation
+  seen.memory = state.memory
   seen.lines = view.map(([node, text, source, from]) => ({
     name: tree.name(node), source, bytes: utf8Len(text),
     from: from ? from.map((input) => ({ ...input, text: clip(input.text, INPUT_BYTES) })) : null,

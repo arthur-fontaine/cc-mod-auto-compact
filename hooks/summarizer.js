@@ -21,7 +21,9 @@ export function summaryRequest(prompt, system, settings = SUMMARIZER) {
 }
 
 // One node: (line, calls). `complete` is $.model.complete; a usage limit or an API error throws.
-export async function summarize(complete, prompt, system, settings = SUMMARIZER) {
+// `limit` and `clean` are the format's (v2: tree.MEMORY_LIMIT and tree.cleanLineV2).
+export async function summarize(complete, prompt, system, settings = SUMMARIZER,
+  { limit = LIMIT, clean = (text) => (text ?? '').trim() } = {}) {
   const lines = []
   let ask = prompt
   let calls = 0
@@ -34,11 +36,11 @@ export async function summarize(complete, prompt, system, settings = SUMMARIZER)
       error.isLimit = r.status === 429 || r.error === 'rate_limit'
       throw error
     }
-    const line = (r.text ?? '').trim()
+    const line = clean(r.text)
     if (line) {
       lines.push(line)
-      if (utf8Len(line) <= LIMIT) break
-      ask = retryPrompt(prompt, line)
+      if (utf8Len(line) <= limit) break
+      ask = retryPrompt(prompt, line, limit)
     }
   }
   if (!lines.length) throw new Error('the summarizer returned no text')
