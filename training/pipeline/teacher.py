@@ -35,6 +35,11 @@ from config import DATA, guard_spend, load_env, redact, redact_headers, require 
 from task import CATEGORIES, QUESTION_ID  # noqa: E402
 
 DEFAULT_ENDPOINT = "https://inference.baseten.co/v1/systemone"
+MAMMOTH = "decision-models/baseten-mammoth-27b-latest"
+# Jev through OpenCode Zen (PLAN.md 3, Jev pre-test): same System One protocol, a Bearer key, and
+# no version id, only the model that served (`x-zen-model`), which stands in for the pin.
+OPENCODE_ENDPOINT = "https://opencode.ai/inference/systemone/v1/systemone"
+JEV_PRICE_PER_MTOK = 0.042  # jev-1.13 input, opencode.ai/docs/zen; the -free variant costs nothing
 CACHE = DATA / "teacher-cache"
 LOG = DATA / "teacher-log.jsonl"
 STATE = DATA / "teacher-state.json"
@@ -96,10 +101,20 @@ class Cache:
             self.entries[entry["key"]] = entry
 
 
-def post(endpoint, key, body, timeout=120):
+def provider(model):
+    """(endpoint, key, auth scheme, version header) of the API that serves a model: Baseten for its
+    `decision-models/` slugs, OpenCode Zen otherwise."""
+    load_env()
+    if model.startswith("decision-models/"):
+        return (os.environ.get("DECISION_ENDPOINT") or DEFAULT_ENDPOINT, require("BASETEN_API_KEY")[0], "Api-Key",
+                "x-baseten-model-version-id")
+    return os.environ.get("OPENCODE_ENDPOINT") or OPENCODE_ENDPOINT, require("OPENCODE_API_KEY")[0], "Bearer", "x-zen-model"
+
+
+def post(endpoint, key, body, timeout=120, auth="Api-Key"):
     """(status, headers, text) for one call; status None when no response arrived."""
     req = urllib.request.Request(endpoint, data=json.dumps(body).encode(), headers={
-        "Authorization": "Api-Key " + key, "Content-Type": "application/json",
+        "Authorization": f"{auth} {key}", "Content-Type": "application/json",
         "User-Agent": "spisev-teacher/0.1"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -125,10 +140,13 @@ def parse_answer(text):
 
 
 class Labeler:
-    def __init__(self, endpoint, key, model, cache, post_fn=post, sleep=time.sleep, start_concurrency=2, state=None):
+    def __init__(self, endpoint, key, model, cache, post_fn=None, sleep=time.sleep, start_concurrency=2, state=None,
+                 auth="Api-Key", version_header="x-baseten-model-version-id"):
         self.endpoint, self.key, self.model, self.cache = endpoint, key, model, cache
         self.state = state or STATE
-        self.post, self.sleep = post_fn, sleep
+        self.post = post_fn or (lambda e, k, b: post(e, k, b, auth=auth))
+        self.sleep = sleep
+        self.version_header = version_header.lower()
         self.concurrency = start_concurrency
         self.in_flight = 0
         self.cond = threading.Condition()
@@ -178,7 +196,7 @@ class Labeler:
             finally:
                 self._release()
             if status == 200:
-                version = headers.get("x-baseten-model-version-id") or headers.get("X-Baseten-Model-Version-Id")
+                version = next((v for k, v in headers.items() if k.lower() == self.version_header), None)
                 answer = parse_answer(text)
                 with self.cond:
                     if self.version is None and version:
@@ -249,9 +267,13 @@ def billed_price(now=None):
 
 
 def settings():
+    """The Mammoth labeler's endpoint, key and model: DECISION_MODEL when it is a Baseten slug."""
     load_env()
-    key, model = require("BASETEN_API_KEY", "DECISION_MODEL")
-    return os.environ.get("DECISION_ENDPOINT") or DEFAULT_ENDPOINT, key, model
+    model = os.environ.get("DECISION_MODEL") or MAMMOTH
+    if not model.startswith("decision-models/"):
+        model = MAMMOTH
+    endpoint, key, _, _ = provider(model)
+    return endpoint, key, model
 
 
 def main():

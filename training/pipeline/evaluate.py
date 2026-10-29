@@ -7,6 +7,7 @@
     uv run python pipeline/evaluate.py --mammoth --states data/states-v2-160.jsonl --split dev --name mammoth-v2-160-dev
     uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
     uv run python pipeline/evaluate.py --claude claude-haiku-5-5 --split dev --name haiku-v1-dev   # claude_teacher.py
+    uv run python pipeline/evaluate.py --jev --split tune --name jev-v1-tune   # DECISION_MODEL on OpenCode Zen
     uv run python pipeline/alpha_report.py                               # the section 11 table
 
 Mammoth is the reference: top-1 agreement with its pick, KL to its distribution,
@@ -58,6 +59,8 @@ def main():
     parser.add_argument("--endpoint", help="A System One endpoint (llama-server)")
     parser.add_argument("--mammoth", action="store_true", help="Re-ask Mammoth one request at a time for latency")
     parser.add_argument("--cloud", metavar="MODEL", help="Another model on the teacher's System One endpoint")
+    parser.add_argument("--jev", action="store_true",
+                        help="DECISION_MODEL on OpenCode Zen, then DECISION_MODEL_FALLBACK if it stops")
     parser.add_argument("--claude", metavar="MODEL", help="A Claude model through claude -p (claude_teacher.py)")
     parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
     parser.add_argument("--message-tokens", type=int, help="Clip each new message to this many (estimated) tokens")
@@ -133,6 +136,45 @@ def main():
             for e in rows:
                 entry, _ = labeler.label(request_for(e["state"], model))
                 preds.append((entry["probabilities"], entry["latency_ms"]))
+    elif args.jev:
+        import os
+        import teacher
+        from config import guard_spend
+        models = [m for m in (os.environ.get("DECISION_MODEL"), os.environ.get("DECISION_MODEL_FALLBACK")) if m]
+        if not models or models[0].startswith("decision-models/"):
+            parser.error("--jev needs DECISION_MODEL set to a Jev model")
+        cache_dir = ROOT / "data" / "teacher-cache-jev"
+        cache = teacher.Cache(cache_dir)
+        todo = [e for e in rows if not any(cache.get(teacher.cache_key(m, request_for(e["state"], m))) for m in models)]
+        tokens = sum(state_size(e["state"])["est_tokens"] for e in todo)
+        # Worst case: the free model stops at once and every call is paid.
+        price = float(os.environ.get("JEV_PRICE_PER_MTOK") or teacher.JEV_PRICE_PER_MTOK)
+        billed = tokens * price / 1e6 if len(models) > 1 or not models[0].endswith("-free") else 0.0
+        if not guard_spend(models[0], calls=len(todo), billed_usd=billed, list_usd=None, dry_run=args.dry_run):
+            return
+        answers, cost = {}, 0.0
+        for model in models:
+            endpoint, key, auth, header = teacher.provider(model)
+            labeler = teacher.Labeler(endpoint, key, model, cache, start_concurrency=2, auth=auth, version_header=header,
+                                      state=cache_dir / f"state-{model}.json")
+            for e in rows:
+                if e["id"] in answers:
+                    continue
+                try:
+                    entry, _ = labeler.label(request_for(e["state"], model))
+                except (teacher.TeacherStop, teacher.VersionChanged) as stop:
+                    print(f"[{model}] stopped: {stop}; {len(answers)}/{len(rows)} answered", file=sys.stderr, flush=True)
+                    break
+                answers[e["id"]] = entry
+            if len(answers) == len(rows):
+                break
+        served = {}
+        for e in rows:
+            entry = answers.get(e["id"])
+            preds.append((entry["probabilities"], entry["latency_ms"]) if entry else (None, 0.0))
+            if entry:
+                served[entry["model"]] = served.get(entry["model"], 0) + 1
+        print(f"[jev] answers by model: {served}", file=sys.stderr, flush=True)
     elif args.claude:
         import concurrent.futures as cf
         import claude_teacher
