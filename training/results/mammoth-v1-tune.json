@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v1-tune",
+ "split": "tune",
+ "n": 918,
+ "agreement": 0.985838779956427,
+ "kl": 0.0016639996098241224,
+ "ece": 0.23693955121100824,
+ "independent_precision": 1.0,
+ "independent_n": 66,
+ "action_agreement": 0.9956427015250545,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 267.6,
+  "p95": 486.8,
+  "max": 1312.6
+ }
+}

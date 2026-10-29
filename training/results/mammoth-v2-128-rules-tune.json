@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-128-rules-tune",
+ "split": "tune",
+ "n": 918,
+ "agreement": 0.8496732026143791,
+ "kl": 0.12707254352805086,
+ "ece": 0.10446839365623876,
+ "independent_precision": 1.0,
+ "independent_n": 68,
+ "action_agreement": 0.9302832244008714,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 251.0,
+  "p95": 1281.3,
+  "max": 12839.9
+ }
+}

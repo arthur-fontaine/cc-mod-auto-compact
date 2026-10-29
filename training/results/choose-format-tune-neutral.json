@@ -1,0 +1,58 @@
+{
+ "mammoth-v1-tune": {
+  "n": 917,
+  "right_action": 0.8920392584514721,
+  "kept_when_it_should": 0.9581081081081081,
+  "acted_when_it_should": 0.615819209039548,
+  "right_action_applied": 0.8735005452562704,
+  "right_category": 0.7099236641221374,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 267.5,
+   "p95": 486.8
+  }
+ },
+ "mammoth-v2-128-tune": {
+  "n": 917,
+  "right_action": 0.8593238822246456,
+  "kept_when_it_should": 0.9094594594594595,
+  "acted_when_it_should": 0.6497175141242938,
+  "right_action_applied": 0.8756815703380589,
+  "right_category": 0.6957470010905126,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 239.2,
+   "p95": 1260.2
+  }
+ },
+ "mammoth-v2-128-rules-tune": {
+  "n": 917,
+  "right_action": 0.8745910577971646,
+  "kept_when_it_should": 0.9283783783783783,
+  "acted_when_it_should": 0.6497175141242938,
+  "right_action_applied": 0.8724100327153762,
+  "right_category": 0.7175572519083969,
+  "errors": 0,
+  "timeouts": 1,
+  "latency_ms": {
+   "p50": 251.0,
+   "p95": 1281.3
+  }
+ },
+ "mammoth-v2-128-rules2-tune": {
+  "n": 917,
+  "right_action": 0.8833151581243184,
+  "kept_when_it_should": 0.9635135135135136,
+  "acted_when_it_should": 0.5480225988700564,
+  "right_action_applied": 0.8702290076335878,
+  "right_category": 0.7142857142857143,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 245.8,
+   "p95": 1261.2
+  }
+ }
+}
