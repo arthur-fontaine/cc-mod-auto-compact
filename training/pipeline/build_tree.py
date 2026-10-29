@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import summarizer  # noqa: E402
 import tree  # noqa: E402
 from config import DATA, guard_spend, load_env  # noqa: E402
-from task import clip_state, state_size  # noqa: E402
+from task import agent_reply, clip_state, clip_state_v2, state_size  # noqa: E402
 from text import estimate_tokens, render, utf8_len  # noqa: E402
 
 CACHE = DATA / "tree-cache" / "nodes.jsonl"
@@ -56,7 +56,7 @@ def node_key(prompt):
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-async def summarize(prompt, complete=None):
+async def summarize(prompt, complete=None, limit=tree.LIMIT):
     """One node through Haiku with up to tree.RETRIES "too long" retries: (line, calls, list_usd)."""
     complete = complete or summarizer.complete
     model = summarizer.settings()["model"]
@@ -69,16 +69,46 @@ async def summarize(prompt, complete=None):
         line = tree.clean_line(text)
         if line:
             lines.append(line)
-            if utf8_len(line) <= tree.LIMIT:
+            if utf8_len(line) <= limit:
                 break
-            ask = tree.retry_prompt(prompt, line)
+            ask = tree.retry_prompt(prompt, line, limit)
     if not lines:
         raise RuntimeError("the summarizer returned no text")
     return tree.shortest(lines), calls, cost
 
 
+class V1:
+    """The v1 state: the line-budget view and the 512-byte lines."""
+    limit = tree.LIMIT
+    context = staticmethod(tree.context_view)
+    needed = staticmethod(tree.needed)
+
+    def lines(self, msgs, t):
+        return tree.view(t), None
+
+    def state(self, conversation, last, message):
+        return clip_state(conversation, message)
+
+
+class V2:
+    """The v2 state (PLAN.md section 2): batched memory, the agent's last reply raw."""
+    context = staticmethod(tree.memory_context)
+    needed = staticmethod(tree.needed_memory)
+
+    def __init__(self, limit):
+        self.limit = limit
+
+    def lines(self, msgs, t):
+        last = msgs[t - 1] if t and msgs[t - 1]["kind"] == "agent" else None
+        return tree.memory_view(t - 1 if last else t), last
+
+    def state(self, memory, last, message):
+        return clip_state_v2(memory, agent_reply(last), message)
+
+
 class Builder:
-    def __init__(self, cache, concurrency, complete=None):
+    def __init__(self, cache, concurrency, complete=None, fmt=None):
+        self.fmt = fmt or V1()
         self.cache = cache
         self.sem = asyncio.Semaphore(concurrency)
         self.complete = complete
@@ -97,13 +127,13 @@ class Builder:
         return await self.node(session, msgs, node)
 
     async def _build(self, session, msgs, node):
-        context = tree.context_view(node)
+        context = self.fmt.context(node)
         if node[0] == 0:
             source = render(msgs[node[1]])
         else:
             a, b = tree.children(node)
             source = (await self.text(session, msgs, a), await self.text(session, msgs, b))
-        free = tree.no_call_text(node, source)
+        free = tree.no_call_text(node, source, self.fmt.limit)
         if free is not None:
             return free
         ctx = [(n, await self.text(session, msgs, n)) for n in context]
@@ -121,7 +151,7 @@ class Builder:
             if self.stopped:
                 raise self.stopped
             try:
-                line, calls, cost = await summarize(prompt, self.complete)
+                line, calls, cost = await summarize(prompt, self.complete, self.fmt.limit)
             except summarizer.UsageLimit as e:
                 self.stopped = e
                 raise
@@ -132,8 +162,8 @@ class Builder:
         return line
 
 
-def plan(points, sessions):
-    """{context session: (messages, {t: view})} for every point."""
+def plan(points, sessions, fmt=None):
+    """{context session: (messages, {t: (view, last agent message or None)})} for every point."""
     from text import messages
     from build import MAX_MESSAGES
 
@@ -143,25 +173,26 @@ def plan(points, sessions):
     out = {}
     for key, ts in need.items():
         msgs = messages(sessions[key]["rows"])[:MAX_MESSAGES]
-        out[key] = (msgs, {t: tree.view(t) for t in sorted(ts)})
+        out[key] = (msgs, {t: (fmt or V1()).lines(msgs, t) for t in sorted(ts)})
     return out
 
 
-def estimate(planned, cache):
+def estimate(planned, cache, fmt=None):
     """(nodes, upper estimate of calls, list USD) for the nodes not yet in the cache."""
+    fmt = fmt or V1()
     nodes = calls = 0
     tokens_in = 0
     for key, (msgs, views) in planned.items():
-        for node in tree.needed(views.values()):
+        for node in fmt.needed([v for v, _ in views.values()]):
             nodes += 1
             if node[0] == 0:
                 size = utf8_len(render(msgs[node[1]]))
-                if size <= tree.LIMIT:
+                if size <= fmt.limit:
                     continue
             else:
-                size = 2 * tree.LIMIT
+                size = 2 * fmt.limit
             calls += 1
-            tokens_in += SYSTEM_TOKENS + estimate_tokens("x" * (size + 16 * tree.LIMIT))
+            tokens_in += SYSTEM_TOKENS + estimate_tokens("x" * (size + 16 * fmt.limit))
     calls = int(calls * 1.1)  # "too long" retries
     inp, out = summarizer.PRICE[summarizer.settings()["model"]]
     return nodes, calls, (tokens_in * 1.1 * inp + calls * 200 * out) / 1e6
@@ -170,7 +201,7 @@ def estimate(planned, cache):
 async def run(planned, points, builder):
     async def one(p):
         msgs, views = planned[p["context_key"]]
-        lines = views[p["t"]]
+        lines, last = views[p["t"]]
         try:
             texts = [await builder.text(p["context_key"], msgs, n) for n in lines]
         except summarizer.UsageLimit:
@@ -179,7 +210,7 @@ async def run(planned, points, builder):
             print(f"point {p['id']}: {e}", file=sys.stderr, flush=True)
             return None
         conversation = tree.view_text(list(zip(lines, texts)))
-        return clip_state(conversation, p["message"])
+        return builder.fmt.state(conversation, last, p["message"])
 
     started, done = time.time(), 0
     results = {}
@@ -203,11 +234,22 @@ def main():
     parser.add_argument("--out", type=Path, default=DATA / "states.jsonl")
     parser.add_argument("--limit-sessions", type=int)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--format", choices=["v1", "v2"], default="v1")
+    parser.add_argument("--limit", type=int, default=tree.MEMORY_LIMIT, help="v2: the line limit in bytes")
+    parser.add_argument("--split", help="Only the points of this split")
     args = parser.parse_args()
     load_env()
+    fmt = V1()
+    if args.format == "v2":
+        fmt = V2(args.limit)
+        summarizer.system_override = summarizer.system_prompt_v2(args.limit)
+        if args.out == DATA / "states.jsonl":
+            args.out = DATA / f"states-v2-{args.limit}.jsonl"
 
     print(f"[tree] auth mode: {summarizer.auth_mode()}", flush=True)
     points = [json.loads(line) for line in args.points.open()]
+    if args.split:
+        points = [p for p in points if p["split"] == args.split]
     if args.limit_sessions:
         keep = set(list(dict.fromkeys(p["session_key"] for p in points))[: args.limit_sessions])
         points = [p for p in points if p["session_key"] in keep]
@@ -217,16 +259,16 @@ def main():
         s = json.loads(line)
         if s["key"] in wanted:
             sessions[s["key"]] = s
-    planned = plan(points, sessions)
+    planned = plan(points, sessions, fmt)
     cache = NodeCache()
-    nodes, calls, list_usd = estimate(planned, cache)
+    nodes, calls, list_usd = estimate(planned, cache, fmt)
     billed = list_usd if summarizer.auth_mode() == "API" else 0.0
     print(f"[tree] {len(points)} points over {len(planned)} sessions need {nodes} nodes", flush=True)
     if not guard_spend("haiku", calls=calls, billed_usd=billed, list_usd=list_usd, dry_run=args.dry_run):
         return
 
     concurrency = int(os.environ.get("SUMMARIZER_CONCURRENCY") or 8)
-    builder = Builder(cache, concurrency)
+    builder = Builder(cache, concurrency, fmt=fmt)
     results = asyncio.run(run(planned, points, builder))
     written = 0
     with args.out.open("w") as f:

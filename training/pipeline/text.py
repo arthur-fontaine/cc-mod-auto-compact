@@ -67,6 +67,17 @@ def clip(text, max_bytes, max_tokens=None):
     return head + MARKER + tail
 
 
+def clip_end(text, max_bytes):
+    """`text` cut to fit, keeping a quarter of the budget for its start and the rest for its end,
+    where an agent's reply concludes or asks."""
+    text = text or ""
+    if utf8_len(text) <= max_bytes:
+        return text
+    room = max(0, max_bytes - utf8_len(MARKER))
+    chars = list(text)
+    return _head(chars, room // 4) + MARKER + _head(reversed(chars), room - room // 4)[::-1]
+
+
 def clean_prompt(text):
     """What the user typed, with exporter and IDE envelopes removed; None if nothing human."""
     text = (text or "").strip()

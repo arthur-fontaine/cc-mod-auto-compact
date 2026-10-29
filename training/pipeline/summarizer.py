@@ -46,12 +46,21 @@ class UsageLimit(Exception):
         self.reset = reset
 
 
+PROMPT_FILE_V2 = REPO / "prompts" / "compact-v2.md"
+system_override = None  # build_tree.py --format v2 sets the v2 prompt here
+
+
+def system_prompt_v2(limit):
+    """prompts/compact-v2.md with its line limit and a ruler of that many bytes."""
+    return PROMPT_FILE_V2.read_text().replace("{LIMIT}", str(limit)).replace("{RULER}", "-" * limit)
+
+
 def system_prompt():
-    return PROMPT_FILE.read_text()
+    return system_override if system_override is not None else PROMPT_FILE.read_text()
 
 
 def prompt_version():
-    return hashlib.sha256(PROMPT_FILE.read_bytes()).hexdigest()[:12]
+    return hashlib.sha256(system_prompt().encode()).hexdigest()[:12]
 
 
 def settings():

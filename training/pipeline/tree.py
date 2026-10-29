@@ -105,20 +105,20 @@ def merge_prompt(a, b, text_a, text_b, context):
             f"<input>\n{text_a}\n{text_b}\n</input>")
 
 
-def retry_prompt(prompt, line):
-    cut = line.encode("utf-8")[:LIMIT].decode("utf-8", "ignore")
-    return (f"{prompt}\n\nToo long: your line is {utf8_len(line)} bytes, over the {LIMIT}-byte limit. "
+def retry_prompt(prompt, line, limit=LIMIT):
+    cut = line.encode("utf-8")[:limit].decode("utf-8", "ignore")
+    return (f"{prompt}\n\nToo long: your line is {utf8_len(line)} bytes, over the {limit}-byte limit. "
             f"Write the whole line again for the same <input>, cutting just enough of the least valuable "
             f"items to fit before this cut:\n{cut}{RULER_NOTE}")
 
 
-def no_call_text(node, sources):
+def no_call_text(node, sources, limit=LIMIT):
     """The node's text when it needs no model call, else None. `sources` is the rendered
     message for a leaf, or the two child lines for a merge."""
     if node[0] == 0:
-        return sources if utf8_len(sources) <= LIMIT else None
+        return sources if utf8_len(sources) <= limit else None
     joined = sources[0] + "\n" + sources[1]
-    return joined if utf8_len(joined) <= LIMIT else None
+    return joined if utf8_len(joined) <= limit else None
 
 
 def shortest(lines):
@@ -127,3 +127,64 @@ def shortest(lines):
 
 def clean_line(text):
     return (text or "").strip()
+
+
+# The v2 memory (PLAN.md section 2): shorter lines, and UniiChat's batched merges so that
+# between two batches the memory only grows at its end and stays in the prompt cache.
+# Budgets are in lines, so the view is still known from t alone.
+MEMORY_LIMIT = 160
+MEMORY_LOW, MEMORY_HIGH = 10, 16
+_memory = {}
+
+
+def _merge_most_due(lines, t):
+    best = None
+    for k in range(len(lines) - 1):
+        (l1, i1), (l2, i2) = lines[k], lines[k + 1]
+        if l1 != l2 or i1 % 2 or i2 != i1 + 1:
+            continue
+        last = span(lines[k + 1])[1] - 1
+        if best is None or _more_due((l1, last), best[1], t):
+            best = (k, (l1, last))
+    if best is None:
+        return False
+    level, index = lines[best[0]]
+    lines[best[0]:best[0] + 2] = [(level + 1, index // 2)]
+    return True
+
+
+def memory_view(t, low=MEMORY_LOW, high=MEMORY_HIGH):
+    """Messages [0, t) as the memory shows them: one line per new message; once past `high`
+    lines, one batch merges the most due pairs back to `low` lines."""
+    key = (low, high)
+    done = _memory.setdefault(key, [[]])
+    while len(done) <= t:
+        lines = done[-1] + [(0, len(done) - 1)]
+        if len(lines) > high:
+            while len(lines) > low and _merge_most_due(lines, len(done)):
+                pass
+        done.append(lines)
+    return list(done[t])
+
+
+def memory_context(node, low=MEMORY_LOW, high=MEMORY_HIGH):
+    """A v2 summary call's <chat>: the memory as it stood before the node's first message."""
+    return memory_view(span(node)[0], low, high)
+
+
+def needed_memory(views, low=MEMORY_LOW, high=MEMORY_HIGH):
+    """`needed` for v2 memories: children and memory contexts first."""
+    seen, order = set(), []
+
+    def visit(node):
+        if node in seen:
+            return
+        seen.add(node)
+        for dep in children(node) + memory_context(node, low, high):
+            visit(dep)
+        order.append(node)
+
+    for v in views:
+        for node in v:
+            visit(node)
+    return order

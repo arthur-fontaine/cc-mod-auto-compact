@@ -12,7 +12,7 @@ server can reuse the cached prefix of a session's earlier requests.
 import json
 import re
 
-from text import clip, estimate_tokens, utf8_len
+from text import clip, clip_end, estimate_tokens, utf8_len
 
 QUESTION_ID = "boundary"
 CATEGORIES = ["continuation", "follow_up", "related", "independent", "return"]
@@ -101,3 +101,53 @@ def messages(state):
 def state_size(state):
     return {"bytes": utf8_len(json.dumps(state, ensure_ascii=False)),
             "est_tokens": estimate_tokens(json.dumps(request(state, "m"), ensure_ascii=False))}
+
+
+# The v2 state (PLAN.md section 2): the memory for the task structure, the agent's last reply
+# raw, then the new message. Everything before the message is known once a turn ends, so a
+# server can have it cached before the developer sends.
+INSTRUCTIONS_V2 = (
+    "memory is a coding session between a developer and an AI coding agent, as one-line summaries "
+    "(id+n|summary: the n messages from id on), oldest first, that track its tasks and how each stands; "
+    "\"=\" means the task of the line before. last_agent_message is the agent's latest reply, cut in the "
+    "middle when long. latest_user_message is the developer's new message. How does it relate to the work "
+    "in the conversation? The answer decides how much of the conversation the agent keeps in its context."
+)
+MAX_MEMORY_BYTES = 4_000
+MAX_AGENT_MESSAGE_BYTES = 1_536
+MAX_MESSAGE_TOKENS = 512
+
+
+def question_v2():
+    return {"type": "choice", "instructions": INSTRUCTIONS_V2, "criteria": dict(CRITERIA)}
+
+
+def agent_reply(message):
+    """What the agent said in a tree message, without its tool lines (the memory has the work)."""
+    if not message or message["kind"] != "agent":
+        return ""
+    said = [line[len("agent: "):] if line.startswith("agent: ") else line
+            for line in message["text"].split("\n") if not line.startswith("tool: ")]
+    return "\n".join(said).strip()
+
+
+def clip_state_v2(memory, last_agent_message, message):
+    return {
+        "memory": clip(neutralize(memory), MAX_MEMORY_BYTES),
+        "last_agent_message": clip_end(neutralize(last_agent_message), MAX_AGENT_MESSAGE_BYTES),
+        "latest_user_message": clip(neutralize(message), MAX_MESSAGE_BYTES, MAX_MESSAGE_TOKENS),
+    }
+
+
+def request_v2(state, model):
+    return {"model": model, "state": state, "questions": {QUESTION_ID: question_v2()}}
+
+
+def messages_v2(state):
+    task = {
+        "question": INSTRUCTIONS_V2,
+        "options": [{"label": LETTER_OF[c], "key": c, "description": CRITERIA[c]} for c in CATEGORIES],
+        "state": {k: state[k] for k in ("memory", "last_agent_message", "latest_user_message")},
+    }
+    return [{"role": "system", "content": SYSTEM},
+            {"role": "user", "content": json.dumps(task, ensure_ascii=False)}]
