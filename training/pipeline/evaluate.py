@@ -4,6 +4,7 @@
     uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8790/v1/systemone --name qwen3-1.7b
     uv run python pipeline/evaluate.py --endpoint ... --warm --name qwen3-1.7b-warm   # latency after send
     uv run python pipeline/evaluate.py --mammoth --name mammoth          # its latency, one request at a time
+    uv run python pipeline/evaluate.py --mammoth --states data/states-v2-160.jsonl --split dev --name mammoth-v2-160-dev
     uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
     uv run python pipeline/alpha_report.py                               # the section 11 table
 
@@ -23,13 +24,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from metrics import score  # noqa: E402
-from task import CATEGORIES, QUESTION_ID, request  # noqa: E402
+from task import CATEGORIES, QUESTION_ID, request, request_v2, state_size  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def request_for(state, model):
+    """The System One request of a v1 or a v2 state."""
+    return (request_v2 if "memory" in state else request)(state, model)
+
+
 def ask_endpoint(endpoint, state, model="spisev-alpha"):
-    body = json.dumps(request(state, model)).encode()
+    body = json.dumps(request_for(state, model)).encode()
     req = urllib.request.Request(endpoint, data=body, headers={"Content-Type": "application/json"})
     started = time.perf_counter()
     with urllib.request.urlopen(req, timeout=120) as r:
@@ -54,11 +60,21 @@ def main():
     parser.add_argument("--name", required=True)
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--states", type=Path, help="Ask with these states (build_tree.py output) for the split's points")
+    parser.add_argument("--keep-cache", action="store_true",
+                        help="With --mammoth: use the teacher's answer cache (no fresh latency, no repeat calls)")
+    parser.add_argument("--dry-run", action="store_true", help="With --mammoth or --cloud: print the estimate only")
     args = parser.parse_args()
     from config import load_env
     load_env()
 
     rows = [json.loads(line) for line in (ROOT / "data" / "split" / f"{args.split}.jsonl").open()][: args.limit]
+    if args.states:
+        states = {s["id"]: s["state"] for s in map(json.loads, args.states.open())}
+        missing = [e["id"] for e in rows if e["id"] not in states]
+        if missing:
+            raise SystemExit(f"{len(missing)} points of {args.split} have no state in {args.states}")
+        rows = [{**e, "state": states[e["id"]]} for e in rows]
     if args.message_tokens:
         from text import clip
         from task import MAX_MESSAGE_BYTES
@@ -87,14 +103,23 @@ def main():
     elif args.mammoth or args.cloud:
         import tempfile
         import teacher
+        from config import guard_spend
         endpoint, key, model = teacher.settings()
         model = args.cloud or model
+        known = teacher.Cache() if args.keep_cache and not args.cloud else None
+        todo = [e for e in rows if not (known and known.get(teacher.cache_key(model, request_for(e["state"], model))))]
+        tokens = sum(state_size(e["state"])["est_tokens"] for e in todo)
+        billed = tokens * teacher.billed_price() / 1e6 if todo and not args.cloud else 0.0
+        if not guard_spend(args.cloud or "mammoth", calls=len(todo), billed_usd=billed, list_usd=None,
+                           dry_run=args.dry_run):
+            return
         with tempfile.TemporaryDirectory() as tmp:
             # Another model is served under its own versions: keep them out of the teacher's state.
             state = Path(tmp) / "state.json" if args.cloud else teacher.STATE
-            labeler = teacher.Labeler(endpoint, key, model, teacher.Cache(Path(tmp)), start_concurrency=1, state=state)
+            cache = known or teacher.Cache(Path(tmp))
+            labeler = teacher.Labeler(endpoint, key, model, cache, start_concurrency=1, state=state)
             for e in rows:
-                entry, _ = labeler.label(request(e["state"], model))
+                entry, _ = labeler.label(request_for(e["state"], model))
                 preds.append((entry["probabilities"], entry["latency_ms"]))
     else:
         parser.error("give --model, --endpoint, --mammoth or --cloud")

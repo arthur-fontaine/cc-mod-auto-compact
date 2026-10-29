@@ -99,8 +99,9 @@ def messages(state):
 
 
 def state_size(state):
+    req = (request_v2 if "memory" in state else request)(state, "m")
     return {"bytes": utf8_len(json.dumps(state, ensure_ascii=False)),
-            "est_tokens": estimate_tokens(json.dumps(request(state, "m"), ensure_ascii=False))}
+            "est_tokens": estimate_tokens(json.dumps(req, ensure_ascii=False))}
 
 
 # The v2 state (PLAN.md section 2): the memory for the task structure, the agent's last reply
