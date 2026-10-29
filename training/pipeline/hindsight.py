@@ -4,6 +4,7 @@
     uv run python pipeline/hindsight.py --teacher claude-sonnet-5-5
     uv run python pipeline/hindsight.py --teacher claude-opus-5-5
     uv run python pipeline/hindsight.py --gold          # -> data/labels/hindsight-gold.jsonl
+    uv run python pipeline/hindsight.py --split dev ...  # the same on dev, to choose a format (PLAN.md 3)
 
 Mammoth is the teacher the student copies, so scoring Mammoth against itself says nothing.
 As in Nisev's test set, two Claude teachers label each held-out test prompt independently,
@@ -60,11 +61,18 @@ SCHEMA = {
 }
 
 
-def items(splices=False):
-    """Held-out test prompts, or with `splices` the held-out splices (pipeline/heldout_splices.py)."""
+def paths(split):
+    """The labels and gold files of a split: the test key keeps its names; dev's say dev."""
+    tag = "" if split == "test" else f"-{split}"
+    return Path(str(OUT).replace("hindsight-", f"hindsight{tag}-")), GOLD.with_name(f"hindsight{tag}-gold.jsonl")
+
+
+def items(splices=False, split="test"):
+    """Held-out test prompts, or with `splices` the held-out splices (pipeline/heldout_splices.py),
+    or the prompts of another split."""
     suffix = "-test-splices" if splices else ""
     points = [json.loads(line) for line in (DATA / f"points{suffix}.jsonl").open()]
-    points = [p for p in points if p["split"] in ("test", "test-splices")]
+    points = [p for p in points if p["split"] in ((split,) if split != "test" else ("test", "test-splices"))]
     states = {s["id"]: s["state"] for s in map(json.loads, (DATA / f"states{suffix}.jsonl").open())}
     keys = {p["session_key"] for p in points} | {p["context_key"] for p in points}
     sessions = {}
@@ -116,10 +124,10 @@ def call(teacher, batch):
     return result["labels"], out.get("total_cost_usd") or 0.0
 
 
-def label(teacher, dry_run, splices=False):
-    path = Path(str(OUT).format(teacher=teacher))
+def label(teacher, dry_run, splices=False, split="test"):
+    path = Path(str(paths(split)[0]).format(teacher=teacher))
     done = {json.loads(line)["id"] for line in path.open()} if path.exists() else set()
-    todo = [i for i in items(splices) if i["id"] not in done]
+    todo = [i for i in items(splices, split) if i["id"] not in done]
     batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
     print(f"[{teacher}] {len(done)} labeled, {len(todo)} to go in {len(batches)} calls (subscription)", flush=True)
     if not guard_spend(teacher, calls=len(batches), billed_usd=0.0, list_usd=None, dry_run=dry_run):
@@ -149,8 +157,9 @@ def label(teacher, dry_run, splices=False):
           f"billed $0.00 (subscription)", flush=True)
 
 
-def gold(teachers):
-    read = lambda t: {lab["id"]: lab for lab in map(json.loads, Path(str(OUT).format(teacher=t)).open())}
+def gold(teachers, split="test"):
+    out, gold_path = paths(split)
+    read = lambda t: {lab["id"]: lab for lab in map(json.loads, Path(str(out).format(teacher=t)).open())}
     a, b = (read(t) for t in teachers)
     both = sorted(set(a) & set(b))
     rows = []
@@ -158,11 +167,11 @@ def gold(teachers):
         ca, cb = a[i]["category"], b[i]["category"]
         rows.append({"id": i, "category": ca if ca == cb else None, "action": action(ca) if action(ca) == action(cb) else None,
                      "teachers": {teachers[0]: ca, teachers[1]: cb}})
-    GOLD.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    gold_path.write_text("".join(json.dumps(r) + "\n" for r in rows))
     cat = [r for r in rows if r["category"]]
     act = [r for r in rows if r["action"]]
     print(f"{len(both)} labeled by both · category agreement {len(cat) / len(both):.3f} ({len(cat)}) · "
-          f"action agreement {len(act) / len(both):.3f} ({len(act)}) -> {GOLD}")
+          f"action agreement {len(act) / len(both):.3f} ({len(act)}) -> {gold_path}")
     print("gold categories:", dict(Counter(r["category"] for r in cat)))
     print("gold actions:", dict(Counter(r["action"] for r in act)))
 
@@ -172,13 +181,14 @@ def main():
     parser.add_argument("--teacher", default="claude-sonnet-5-5")
     parser.add_argument("--gold", action="store_true")
     parser.add_argument("--splices", action="store_true", help="Label the held-out splices instead")
+    parser.add_argument("--split", default="test", choices=["test", "dev"])
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     load_env()
     if args.gold:
-        gold(["claude-sonnet-5-5", "claude-opus-5-5"])
+        gold(["claude-sonnet-5-5", "claude-opus-5-5"], args.split)
     else:
-        label(args.teacher, args.dry_run, args.splices)
+        label(args.teacher, args.dry_run, args.splices, args.split)
 
 
 if __name__ == "__main__":
