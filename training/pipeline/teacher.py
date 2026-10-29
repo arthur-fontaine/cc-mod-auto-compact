@@ -2,6 +2,8 @@
 
     uv run python pipeline/teacher.py --dry-run         # estimate only
     uv run python pipeline/teacher.py                   # data/states.jsonl -> data/labels/mammoth.jsonl
+    uv run python pipeline/teacher.py --model jev-1.13 --states data/states-v2-128-train.jsonl \
+        data/states-v2-128.jsonl --out data/labels/jev-v2-128.jsonl     # the v2 teacher (PLAN.md 4)
 
 Every answer is cached by hash(model slug, request) in data/teacher-cache/, so a rerun
 never asks a cached point again. Per call it stores the whole probability distribution,
@@ -277,10 +279,11 @@ def settings():
 
 
 def main():
-    from task import request, state_size
+    from task import request, request_v2, state_size
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--states", type=Path, default=DATA / "states.jsonl")
+    parser.add_argument("--states", type=Path, nargs="+", default=[DATA / "states.jsonl"])
+    parser.add_argument("--model", help="Another teacher than Mammoth, such as jev-1.13 on OpenCode Zen")
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--limit-sessions", type=int)
     parser.add_argument("--splits", default="train,dev,test")
@@ -288,32 +291,41 @@ def main():
     parser.add_argument("--accept-version", help="Label with this newly served version (answers of other "
                                                  "versions are asked again); the previous one is recorded")
     args = parser.parse_args()
-    endpoint, key, model = settings()
+    if args.model and not args.model.startswith("decision-models/"):
+        if args.out == OUT:
+            parser.error("--model: give --out, so Mammoth's labels are not overwritten")
+        model = args.model
+        endpoint, key, auth, header = provider(model)
+        cache_dir, state_path = DATA / "teacher-cache-jev", DATA / "teacher-cache-jev" / f"state-{model}.json"
+        price = float(os.environ.get("JEV_PRICE_PER_MTOK") or JEV_PRICE_PER_MTOK) * (not model.endswith("-free"))
+    else:
+        endpoint, key, model = settings()
+        auth, header, cache_dir, state_path, price = "Api-Key", "x-baseten-model-version-id", CACHE, STATE, None
     if args.accept_version:
-        old = json.loads(STATE.read_text()) if STATE.exists() else {}
-        STATE.write_text(json.dumps({"version": args.accept_version, "model": model,
+        old = json.loads(state_path.read_text()) if state_path.exists() else {}
+        state_path.write_text(json.dumps({"version": args.accept_version, "model": model,
                                      "previous": old.get("previous", []) + ([old["version"]] if old.get("version") else []),
                                      "accepted_at": time.time()}))
         print(f"[mammoth] accepted served version {args.accept_version} (was {old.get('version')})", flush=True)
 
-    rows = [json.loads(line) for line in args.states.open()]
+    rows = [json.loads(line) for path in args.states for line in path.open()]
     rows = [r for r in rows if r["split"] in args.splits.split(",")]
     if args.limit_sessions:
         keep = list(dict.fromkeys(r["session_key"] for r in rows))[: args.limit_sessions]
         rows = [r for r in rows if r["session_key"] in set(keep)]
-    cache = Cache()
-    bodies = [request(r["state"], model) for r in rows]
-    current = json.loads(STATE.read_text()).get("version") if STATE.exists() else None
+    cache = Cache(cache_dir)
+    bodies = [(request_v2 if "memory" in r["state"] else request)(r["state"], model) for r in rows]
+    current = json.loads(state_path.read_text()).get("version") if state_path.exists() else None
     todo = [b for b in bodies if not cache.get(cache_key(model, b))
             or (current and cache.get(cache_key(model, b)).get("version") not in (None, current))]
     tokens = sum(state_size(b["state"])["est_tokens"] for b in todo)
-    if not guard_spend("mammoth", calls=len(todo), billed_usd=tokens * billed_price() / 1e6, list_usd=None,
-                       dry_run=args.dry_run):
+    price = billed_price() if price is None else price
+    if not guard_spend(model, calls=len(todo), billed_usd=tokens * price / 1e6, list_usd=None, dry_run=args.dry_run):
         return
     print(f"[mammoth] {len(rows)} points, {len(rows) - len(todo)} cached, {len(todo)} to ask "
           f"(~{tokens / 1e6:.2f}M input tokens) at {endpoint}", flush=True)
 
-    labeler = Labeler(endpoint, key, model, cache)
+    labeler = Labeler(endpoint, key, model, cache, state=state_path, auth=auth, version_header=header)
     results, failures, new_tokens = {}, 0, 0
     lock = threading.Lock()
 
@@ -348,7 +360,7 @@ def main():
                                     "version": e.get("version"), "latency_ms": e.get("latency_ms"),
                                     "input_tokens": e.get("input_tokens")}) + "\n")
     print(f"[mammoth] spend: {labeler.calls} new calls, {new_tokens} new input tokens, billed "
-          f"${new_tokens * billed_price() / 1e6:.2f}; {len(results)} labeled, {failures} failed -> {args.out}")
+          f"${new_tokens * price / 1e6:.2f}; {len(results)} labeled, {failures} failed -> {args.out}")
     if isinstance(labeler.stopped, TeacherStop):
         notify_stop()
         print(stop_block(labeler.stopped, len(results), len(rows) - len(results)))

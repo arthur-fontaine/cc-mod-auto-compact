@@ -24,13 +24,14 @@ ROOT = Path(__file__).resolve().parent.parent
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("model", type=Path)
+    parser.add_argument("--split-dir", type=Path, default=ROOT / "data" / "split")
     args = parser.parse_args()
     from config import load_env
     load_env()
 
     clf = Classifier(args.model)
     clf.temperature = 1.0
-    dev = [json.loads(line) for line in (ROOT / "data" / "split" / "dev.jsonl").open()]
+    dev = [json.loads(line) for line in (args.split_dir / "dev.jsonl").open()]
     logits = mx.stack([clf.letter_logits(e["state"])[0] for e in dev])
     targets = mx.array([e["targets"] for e in dev], dtype=mx.float32)
     ref = mx.argmax(targets, axis=-1)

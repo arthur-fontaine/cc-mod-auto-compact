@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
-from task import LETTERS, clip_state, messages  # noqa: E402
+from task import LETTERS, clip_any, prompt  # noqa: E402
 
 SPLIT = ROOT / "data" / "split"
 FILES = ("train_unsloth.py", "vm_packer.py", "soft_loss.py")
@@ -28,8 +28,7 @@ FILES = ("train_unsloth.py", "vm_packer.py", "soft_loss.py")
 def encode(tokenizer, example):
     from infer import encode_prompt
 
-    state = clip_state(example["state"]["conversation"], example["state"]["latest_user_message"])
-    ids = encode_prompt(tokenizer, messages(state))
+    ids = encode_prompt(tokenizer, prompt(clip_any(example["state"])))
     answer = tokenizer.encode(example["completion"], add_special_tokens=False)
     assert len(answer) == 1, f"answer letter {example['completion']!r} is not one token"
     return {"id": example["id"], "category": example["category"], "prompt_ids": ids, "answer_id": answer[0],
@@ -45,6 +44,7 @@ def main():
     parser.add_argument("--tokenizer", default="Qwen/Qwen3.5-2B")
     parser.add_argument("--max-tokens", type=int, default=8192, help="Drop longer train examples")
     parser.add_argument("--name", default="spisev", help="Bundle name: cloud/dist/NAME and NAME-bundle.tar.gz")
+    parser.add_argument("--split-dir", type=Path, default=SPLIT, help="data/split-v2 for the v2 student")
     args = parser.parse_args()
     load_env()
 
@@ -55,7 +55,7 @@ def main():
     (stage / "data").mkdir(parents=True)
     counts = {}
     for name in ("train", "dev"):
-        rows = [encode(tokenizer, json.loads(line)) for line in (SPLIT / f"{name}.jsonl").open()]
+        rows = [encode(tokenizer, json.loads(line)) for line in (args.split_dir / f"{name}.jsonl").open()]
         if name == "train":
             rows = [r for r in rows if len(r["prompt_ids"]) + 1 <= args.max_tokens]
         with (stage / "data" / f"{name}.jsonl").open("w") as f:

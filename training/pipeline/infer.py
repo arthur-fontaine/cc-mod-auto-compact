@@ -16,7 +16,7 @@ from mlx_lm import load
 from mlx_lm.models.cache import make_prompt_cache
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from task import CATEGORIES, LETTERS, messages  # noqa: E402
+from task import CATEGORIES, LETTERS, prompt  # noqa: E402
 
 
 def encode_prompt(tokenizer, msgs):
@@ -35,7 +35,7 @@ class Classifier:
         self._prefix = self._prefix_cache = None
 
     def tokens(self, state):
-        return encode_prompt(self.tokenizer, messages(state))
+        return encode_prompt(self.tokenizer, prompt(state))
 
     def _cached_prefix(self, ids):
         if self._prefix is None:

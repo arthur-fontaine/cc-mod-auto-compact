@@ -202,6 +202,18 @@ def request_v2(state, model, variant="v2"):
     return {"model": model, "state": state, "questions": {QUESTION_ID: question_v2(variant)}}
 
 
+def prompt(state):
+    """The student's prompt for a v1 or a v2 state."""
+    return (messages_v2 if "memory" in state else messages)(state)
+
+
+def clip_any(state):
+    """A v1 or v2 state through its shared clip."""
+    if "memory" in state:
+        return clip_state_v2(state["memory"], state["last_agent_message"], state["latest_user_message"])
+    return clip_state(state["conversation"], state["latest_user_message"])
+
+
 def messages_v2(state):
     task = {
         "question": INSTRUCTIONS_V2,

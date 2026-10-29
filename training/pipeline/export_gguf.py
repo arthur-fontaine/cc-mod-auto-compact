@@ -7,8 +7,9 @@ llama.cpp serves "decision models" from GGUF metadata. This one uses the `openje
 decision type: one letter per option, read from the next-token logits after a prompt
 that a `systemone` chat template renders from the request. The template rebuilds exactly
 the prompt the model was trained on (pipeline/task.py): the system prompt, then the JSON
-task with Python's separators, the request's question and options, and the two state
-fields (`conversation`, `latest_user_message`). llama.cpp's `tojson` keeps non-ASCII as
+task with Python's separators, the request's question and options, and the state fields
+(v1: `conversation`, `latest_user_message`; `--format v2`: `memory`, `last_agent_message`,
+`latest_user_message`). llama.cpp's `tojson` keeps non-ASCII as
 is, like json.dumps(..., ensure_ascii=False). The softmax temperature fitted on dev
 (pipeline/calibrate.py) is stored as `<arch>.decision.temperature.choice`.
 
@@ -28,7 +29,11 @@ from task import LETTERS, SYSTEM  # noqa: E402
 ASSISTANT_PREFIX = "<|im_start|>assistant\n<think>\n\n</think>\n\n"
 
 
-def systemone_template():
+FIELDS = {"v1": ("conversation", "latest_user_message"),
+          "v2": ("memory", "last_agent_message", "latest_user_message")}
+
+
+def systemone_template(fmt="v1"):
     option = ('{"label": "{{ letters[loop.index0] }}", "key": {{ o.key | tojson }}, '
               '"description": {{ o.description | tojson }}}')
     return (
@@ -37,8 +42,7 @@ def systemone_template():
         "<|im_start|>user\n"
         '{"question": {{ instructions | tojson }}, "options": ['
         "{% for o in options %}{% if not loop.first %}, {% endif %}" + option + "{% endfor %}"
-        '], "state": {"conversation": {{ state.conversation | tojson }}, '
-        '"latest_user_message": {{ state.latest_user_message | tojson }}}}<|im_end|>\n'
+        '], "state": {' + ", ".join(f'"{k}": {{{{ state.{k} | tojson }}}}' for k in FIELDS[fmt]) + '}}<|im_end|>\n'
         + ASSISTANT_PREFIX
     )
 
@@ -51,6 +55,7 @@ def main():
     parser.add_argument("--outtype", default="q8_0")
     parser.add_argument("--temperature", type=float)
     parser.add_argument("--name", default="spisev-alpha")
+    parser.add_argument("--format", choices=sorted(FIELDS), default="v1", help="The state the model was trained on")
     args = parser.parse_args()
 
     temperature = args.temperature or json.loads((args.calibrated / "calibration.json").read_text())["temperature"]
@@ -70,7 +75,7 @@ def main():
         gguf.Keys.General.NAME: MetadataDetails(string, args.name),
         f"{arch}.decision.type": MetadataDetails(string, "openjev"),
         f"{arch}.decision.temperature.choice": MetadataDetails(f32, temperature),
-        "tokenizer.chat_template.systemone": MetadataDetails(string, systemone_template()),
+        "tokenizer.chat_template.systemone": MetadataDetails(string, systemone_template(args.format)),
         "tokenizer.chat_templates": MetadataDetails(gguf.GGUFValueType.ARRAY, ["systemone"], sub_type=string),
     }
     writer = gguf.GGUFWriter(out, arch=arch, endianess=reader.endianess)

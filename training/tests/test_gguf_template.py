@@ -6,12 +6,12 @@ import export_gguf
 import task
 
 
-def render(template, state):
+def render(template, state, q=None):
     import jinja2
 
     env = jinja2.Environment(keep_trailing_newline=True)  # as llama.cpp renders it
     env.filters["tojson"] = lambda v: json.dumps(v, ensure_ascii=False)
-    q = task.question()
+    q = q or task.question()
     options = [{"key": k, "description": d} for k, d in q["criteria"].items()]
     return env.from_string(template).render(instructions=q["instructions"], options=options, state=state)
 
@@ -31,6 +31,11 @@ class TemplateTest(unittest.TestCase):
     def test_systemone_template_renders_the_training_prompt(self):
         for state in self.STATES:
             self.assertEqual(render(export_gguf.systemone_template(), state), qwen_chat(task.messages(state)))
+
+    def test_v2_template_renders_the_v2_training_prompt(self):
+        state = task.clip_state_v2("0+1|user: a \"b\"\n1+1|= [done] é", "Done. Commit?", "yes 日本語")
+        self.assertEqual(render(export_gguf.systemone_template("v2"), state, task.question_v2()),
+                         qwen_chat(task.messages_v2(state)))
 
     def test_against_the_real_qwen_template_when_cached(self):
         try:
