@@ -129,3 +129,4 @@ Pick the format on dev, never on test:
 | Date | Phase | Result |
 | :- | :- | :- |
 | 2026-10-29 | analysis | Numbers in [Why](#why), from the 345 test states and the live tree of one session. |
+| 2026-10-29 | 0 · passed | Spisev v1 rerun on the 418 points: right action 93.3%, acted 79.4%, category 81.5%, auto 87.1%, the README's to 0.0 point. Latency p50 / p95: cold 153 / 2,487 ms (4 timeouts), prefilled 54 / 284 ms (1 timeout), same answers. Tokens left after prefill: p50 23, p95 351, max 9,577 (one long message). By state size (test + splices), right category Spisev / Mammoth: < 500 88.2 / 94.1%, 500–1k 88.7 / 87.2%, 1–2k 70.9 / 86.1%, 2–4k 71.7 / 83.0%, 4k+ 50.0 / 80.0%. Dev key (`hindsight.py --split dev`): 249 of 266 points where both teachers agree on the action, only 14 that act (no splices on dev), always keep 94.4%: on dev, right category (216 points) is what separates formats. |
