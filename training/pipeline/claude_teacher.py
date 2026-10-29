@@ -5,10 +5,12 @@
 The teacher reads exactly what the student is trained on (`task.messages` or `messages_v2`:
 the same system prompt and JSON task) and answers with one option letter, a hard label as in
 Nisev and tev1. Runs through `claude -p` isolated like the hindsight teachers (hindsight.env),
-on the subscription. Answers are cached by model and prompt, so a rerun asks nothing again.
+on the subscription. Answers are cached by model and prompt, so a rerun asks nothing again;
+CLAUDE_TEACHER_CACHE points at another cache, to draw the same points a second time.
 """
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -20,7 +22,7 @@ from config import DATA  # noqa: E402
 from hindsight import env  # noqa: E402
 from task import CATEGORY_OF, LETTERS, messages, messages_v2  # noqa: E402
 
-CACHE = DATA / "claude-cache"
+CACHE = Path(os.environ.get("CLAUDE_TEACHER_CACHE", DATA / "claude-cache"))
 TRIES = 3
 
 
