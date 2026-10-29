@@ -159,6 +159,19 @@ QUESTIONS_V2 = {
         "options or a wrap-up there does not decide the category.")},
 }
 QUESTIONS_V2["rules2"] = {**QUESTIONS_V2["rules"], "criteria": CRITERIA_V2_RULES2}
+# rules2 overshot: a new batch of features for the same game, after a narrow fix, is related for
+# the key. The line between follow_up and related is whether the request needs the recent details.
+CRITERIA_V2_RULES3 = {
+    **CRITERIA_V2_RULES,
+    "follow_up": "Builds on what was just done or is in progress: a fix, refinement, test or extension of that "
+                 "work itself, which needs its details, including one the agent did not offer.",
+    "related": "New work in the same project, even in the same app, that does not build on what was just done: "
+               "it needs the general picture (repo, files, decisions), not the details of the recent exchange.",
+}
+QUESTIONS_V2["rules3"] = {**QUESTIONS_V2["rules"], "criteria": CRITERIA_V2_RULES3, "instructions": INSTRUCTIONS_V2 + (
+    " The question is how much of the recent exchange the new request needs. Judge by what the new message asks "
+    "for, not by how the agent's reply ended: an offer, a list of options or a wrap-up there does not decide the "
+    "category.")}
 
 
 def agent_reply(message):
