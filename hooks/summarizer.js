@@ -9,6 +9,12 @@ import { retryPrompt } from './tree.js'
 
 export const SUMMARIZER = { model: 'claude-haiku-5-5', effort: 'low', maxTokens: 4096 }
 export const PROMPT_PATH = 'prompts/compact.md'
+export const PROMPT_PATH_V2 = 'prompts/compact-v2.md'
+
+// prompts/compact-v2.md with its line limit and a ruler of that many bytes.
+export function systemPromptV2(template, limit) {
+  return template.replaceAll('{LIMIT}', String(limit)).replaceAll('{RULER}', '-'.repeat(limit))
+}
 
 export function summaryRequest(prompt, system, settings = SUMMARIZER) {
   return { model: settings.model, system, prompt, effort: settings.effort, maxTokens: settings.maxTokens }

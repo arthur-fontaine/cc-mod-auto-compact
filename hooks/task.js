@@ -1,7 +1,7 @@
 // The decision task, as training/pipeline/task.py builds it: the view and the new message,
 // clipped to the same token and byte budgets, and the question spisev-alpha was trained on.
 
-import { clip, estimateTokens, pyJson } from './text.js'
+import { clip, clipEnd, estimateTokens, pyJson } from './text.js'
 
 export const QUESTION_ID = 'boundary'
 export const CATEGORIES = ['continuation', 'follow_up', 'related', 'independent', 'return']
@@ -59,4 +59,48 @@ export function clipState(conversation, message) {
 // State first, then the fixed question, so a server reuses the cached prefix of earlier requests.
 export function request(state, model) {
   return { model, state, questions: { [QUESTION_ID]: question() } }
+}
+
+// The v2 state (task.py): the memory for the task structure, the agent's last reply raw, then
+// the new message, so everything before the message can be cached before the developer sends.
+export const INSTRUCTIONS_V2 =
+  'memory is a coding session between a developer and an AI coding agent, as one-line summaries ' +
+  '(id+n|summary: the n messages from id on), oldest first, that track its tasks and how each stands; ' +
+  '"=" means the task of the line before. last_agent_message is the agent\'s latest reply, cut in the ' +
+  "middle when long. latest_user_message is the developer's new message. How does it relate to the work " +
+  'in the conversation? The answer decides how much of the conversation the agent keeps in its context.'
+export const MAX_MEMORY_BYTES = 4_000
+export const MAX_AGENT_MESSAGE_BYTES = 1_536
+export const MAX_MESSAGE_TOKENS = 512
+
+export function questionV2() {
+  return { type: 'choice', instructions: INSTRUCTIONS_V2, criteria: { ...CRITERIA } }
+}
+
+// What the agent said in a tree message, without its tool lines; a part's later lines (a
+// multi-line tool input) carry no prefix.
+export function agentReply(message) {
+  if (!message || message.kind !== 'agent') return ''
+  const said = []
+  let prose = true
+  for (let line of message.text.split('\n')) {
+    if (line.startsWith('agent: ')) {
+      prose = true
+      line = line.slice('agent: '.length)
+    } else if (line.startsWith('tool: ')) prose = false
+    if (prose) said.push(line)
+  }
+  return said.join('\n').trim()
+}
+
+export function clipStateV2(memory, lastAgentMessage, message) {
+  return {
+    memory: clip(neutralize(memory), MAX_MEMORY_BYTES),
+    last_agent_message: clipEnd(neutralize(lastAgentMessage), MAX_AGENT_MESSAGE_BYTES),
+    latest_user_message: clip(neutralize(message), MAX_MESSAGE_BYTES, MAX_MESSAGE_TOKENS),
+  }
+}
+
+export function requestV2(state, model) {
+  return { model, state, questions: { [QUESTION_ID]: questionV2() } }
 }

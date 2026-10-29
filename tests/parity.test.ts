@@ -2,9 +2,9 @@ import { expect, test } from 'claude-code/testing'
 
 import { FIXTURES } from './fixtures/parity.js'
 import { CATEGORIES, NEVER_ACT, POLICY } from '../hooks/policy.js'
-import { summaryRequest, SUMMARIZER } from '../hooks/summarizer.js'
-import { clipState, request } from '../hooks/task.js'
-import { clip, cleanPrompt, estimateTokens, messages, render } from '../hooks/text.js'
+import { summaryRequest, SUMMARIZER, systemPromptV2 } from '../hooks/summarizer.js'
+import { agentReply, clipState, clipStateV2, request, requestV2 } from '../hooks/task.js'
+import { clip, clipEnd, cleanPrompt, estimateTokens, messages, render } from '../hooks/text.js'
 import * as tree from '../hooks/tree.js'
 
 // Each value below was computed by the Python pipeline (training/scripts/make_fixtures.py):
@@ -57,4 +57,22 @@ test('the policy table is policy.py', () => {
   expect(POLICY).toEqual(FIXTURES.policy)
   expect([...NEVER_ACT].sort()).toEqual(FIXTURES.neverAct)
   expect(CATEGORIES).toEqual(FIXTURES.categories)
+})
+
+test('v2: the batched memory views and the nodes they need are the same', () => {
+  for (const v of FIXTURES.v2.memoryViews) expect(tree.memoryView(v.t).map(tree.name)).toEqual(v.lines)
+  for (const n of FIXTURES.v2.neededMemory) expect(tree.neededMemory([tree.memoryView(n.t)]).map(tree.name)).toEqual(n.order)
+})
+
+test('v2: the agent\'s last reply is filtered and clipped the same, and the state is the same', () => {
+  for (const c of FIXTURES.v2.clipEnd) expect(clipEnd(c.text, c.maxBytes)).toBe(c.out)
+  for (const r of FIXTURES.v2.replies) expect(agentReply(r.message)).toBe(r.out)
+  for (const s of FIXTURES.v2.states) expect(clipStateV2(s.memory, s.last, s.message)).toEqual(s.state)
+  const conversation = FIXTURES.states[0].conversation
+  expect(requestV2(clipStateV2(conversation, 'Done.', 'now the README'), 'spisev-alpha')).toEqual(FIXTURES.v2.request)
+})
+
+test('v2: the summary prompt and its retry are the same', () => {
+  expect(systemPromptV2(FIXTURES.v2.promptTemplate, 160)).toBe(FIXTURES.v2.prompt160)
+  expect(tree.retryPrompt(FIXTURES.v2.leaf, 'é'.repeat(100) + 'z'.repeat(30), 160)).toBe(FIXTURES.v2.retry)
 })

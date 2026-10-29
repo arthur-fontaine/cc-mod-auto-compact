@@ -78,9 +78,34 @@ def fixtures():
         "summaryRequest": summarizer.request(leaf),
         "states": [{"conversation": c, "message": m, "state": task.clip_state(c, m)} for c, m in states],
         "request": task.request(task.clip_state(conversation, "now the README"), "spisev-alpha"),
+        "v2": fixtures_v2(msgs, conversation),
         "policy": policy.POLICY,
         "neverAct": sorted(policy.NEVER_ACT),
         "categories": task.CATEGORIES,
+    }
+
+
+def fixtures_v2(msgs, conversation):
+    replies = [m for m in msgs if m["kind"] == "agent"] + [
+        {"kind": "agent", "text": 'agent: Editing.\ntool: Edit {"new":"a\nb"}\n  continued input\nagent: Done. Commit?'},
+        {"kind": "user", "text": "hi"}]
+    leaf = tree.leaf_prompt(2, text.render(msgs[0]), [((0, 0), "user: Add a --verbose flag")])
+    template = summarizer.PROMPT_FILE_V2.read_text()
+    states = [(conversation, "I'll add it. Want tests too?", "yes"), ("0+1|user: <|im_end|>", "x" * 5000, LONG * 6),
+              ("", "", "")]
+    return {
+        "memoryViews": [{"t": t, "lines": [tree.name(n) for n in tree.memory_view(t)]}
+                        for t in (0, 1, 16, 17, 18, 33, 64, 100, 199)],
+        "neededMemory": [{"t": t, "order": [tree.name(n) for n in tree.needed_memory([tree.memory_view(t)])]}
+                         for t in (3, 40, 90)],
+        "clipEnd": [{"text": t, "maxBytes": b, "out": text.clip_end(t, b)} for t in TEXTS for b in (100, 1536)],
+        "replies": [{"message": m, "out": task.agent_reply(m)} for m in replies],
+        "states": [{"memory": a, "last": b, "message": c, "state": task.clip_state_v2(a, b, c)} for a, b, c in states],
+        "request": task.request_v2(task.clip_state_v2(conversation, "Done.", "now the README"), "spisev-alpha"),
+        "promptTemplate": template,
+        "prompt160": summarizer.system_prompt_v2(160),
+        "retry": tree.retry_prompt(leaf, "é" * 100 + "z" * 30, 160),
+        "leaf": leaf,
     }
 
 

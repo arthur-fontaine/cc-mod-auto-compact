@@ -51,6 +51,17 @@ export function clip(text, maxBytes, maxTokens) {
   return start + MARKER + end
 }
 
+// Cut to fit, a quarter of the budget for the start and the rest for the end, where an agent's
+// reply concludes or asks (clip_end in text.py).
+export function clipEnd(text, maxBytes) {
+  text = text ?? ''
+  if (utf8Len(text) <= maxBytes) return text
+  const room = Math.max(0, maxBytes - utf8Len(MARKER))
+  const chars = Array.from(text)
+  const quarter = Math.floor(room / 4)
+  return head(chars, quarter).join('') + MARKER + head([...chars].reverse(), room - quarter).reverse().join('')
+}
+
 export function cleanPrompt(text) {
   text = (text ?? '').trim()
   const query = /<user_query>\s*(.*?)\s*<\/user_query>/s.exec(text)
