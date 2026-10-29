@@ -75,4 +75,5 @@ test('v2: the agent\'s last reply is filtered and clipped the same, and the stat
 test('v2: the summary prompt and its retry are the same', () => {
   expect(systemPromptV2(FIXTURES.v2.promptTemplate, 160)).toBe(FIXTURES.v2.prompt160)
   expect(tree.retryPrompt(FIXTURES.v2.leaf, 'é'.repeat(100) + 'z'.repeat(30), 160)).toBe(FIXTURES.v2.retry)
+  for (const c of FIXTURES.v2.cleanLines) expect(tree.cleanLineV2(c.text)).toBe(c.out)
 })

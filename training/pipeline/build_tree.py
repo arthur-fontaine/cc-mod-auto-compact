@@ -56,7 +56,7 @@ def node_key(prompt):
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-async def summarize(prompt, complete=None, limit=tree.LIMIT):
+async def summarize(prompt, complete=None, limit=tree.LIMIT, clean=tree.clean_line):
     """One node through Haiku with up to tree.RETRIES "too long" retries: (line, calls, list_usd)."""
     complete = complete or summarizer.complete
     model = summarizer.settings()["model"]
@@ -66,7 +66,7 @@ async def summarize(prompt, complete=None, limit=tree.LIMIT):
         text, usage = await complete(ask)
         calls += 1
         cost += summarizer.list_price(usage, model)
-        line = tree.clean_line(text)
+        line = clean(text)
         if line:
             lines.append(line)
             if utf8_len(line) <= limit:
@@ -80,6 +80,7 @@ async def summarize(prompt, complete=None, limit=tree.LIMIT):
 class V1:
     """The v1 state: the line-budget view and the 512-byte lines."""
     limit = tree.LIMIT
+    clean = staticmethod(tree.clean_line)
     context = staticmethod(tree.context_view)
     needed = staticmethod(tree.needed)
 
@@ -94,6 +95,7 @@ class V2:
     """The v2 state (PLAN.md section 2): batched memory, the agent's last reply raw."""
     context = staticmethod(tree.memory_context)
     needed = staticmethod(tree.needed_memory)
+    clean = staticmethod(tree.clean_line_v2)
 
     def __init__(self, limit):
         self.limit = limit
@@ -151,7 +153,7 @@ class Builder:
             if self.stopped:
                 raise self.stopped
             try:
-                line, calls, cost = await summarize(prompt, self.complete, self.fmt.limit)
+                line, calls, cost = await summarize(prompt, self.complete, self.fmt.limit, self.fmt.clean)
             except summarizer.UsageLimit as e:
                 self.stopped = e
                 raise

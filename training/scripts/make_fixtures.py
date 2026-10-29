@@ -106,6 +106,8 @@ def fixtures_v2(msgs, conversation):
         "prompt160": summarizer.system_prompt_v2(160),
         "retry": tree.retry_prompt(leaf, "é" * 100 + "z" * 30, 160),
         "leaf": leaf,
+        "cleanLines": [{"text": t, "out": tree.clean_line_v2(t)} for t in (
+            "2+1|2+1|= [done] merged", " `= [done] dev: ok` ", '"task: x [left]"', "task: a 1+1 b", "'", "")],
     }
 
 

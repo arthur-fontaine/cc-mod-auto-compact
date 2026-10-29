@@ -83,6 +83,14 @@ class MessageClipTest(unittest.TestCase):
         self.assertEqual(task.clip_state("0+1|user: hi", "short")["latest_user_message"], "short")
 
 
+class CleanLineTest(unittest.TestCase):
+    def test_copied_name_and_quotes_are_removed(self):
+        self.assertEqual(tree.clean_line_v2("2+1|2+1|= [done] merged"), "= [done] merged")
+        self.assertEqual(tree.clean_line_v2(" `= [done] dev: ok` "), "= [done] dev: ok")
+        self.assertEqual(tree.clean_line_v2('"task: x [left]"'), "task: x [left]")
+        self.assertEqual(tree.clean_line_v2("task: a 1+1 b"), "task: a 1+1 b")
+
+
 class PromptV2Test(unittest.TestCase):
     def test_limit_and_ruler(self):
         p = summarizer.system_prompt_v2(192)

@@ -13,6 +13,8 @@ being the pair's last message; ties go to the oldest), until at most `leaves + c
 lines remain. Budgets are in lines, so which nodes a view needs is known before any is
 built. hooks/tree.js is the same code.
 """
+import re
+
 from text import utf8_len
 
 LIMIT = 512
@@ -127,6 +129,19 @@ def shortest(lines):
 
 def clean_line(text):
     return (text or "").strip()
+
+
+NAME_PREFIX = re.compile(r"^(?:\d+\+\d+\|)+")
+
+
+def clean_line_v2(text):
+    """A v2 line as the summarizer wrote it, without a copied `id+n|` name or quotes around it."""
+    line = clean_line(text)
+    for _ in range(2):
+        line = NAME_PREFIX.sub("", line).strip()
+        if len(line) > 1 and line[0] == line[-1] and line[0] in "`\"'":
+            line = line[1:-1].strip()
+    return line
 
 
 # The v2 memory (PLAN.md section 2): shorter lines, and UniiChat's batched merges so that

@@ -149,3 +149,15 @@ export function neededMemory(views, low = MEMORY.low, high = MEMORY.high) {
   for (const v of views) for (const node of v) visit(node)
   return order
 }
+
+const NAME_PREFIX = /^(?:\d+\+\d+\|)+/
+
+// A v2 line as the summarizer wrote it, without a copied `id+n|` name or quotes around it.
+export function cleanLineV2(text) {
+  let line = (text ?? '').trim()
+  for (let i = 0; i < 2; i++) {
+    line = line.replace(NAME_PREFIX, '').trim()
+    if (line.length > 1 && line[0] === line[line.length - 1] && '`"\''.includes(line[0])) line = line.slice(1, -1).trim()
+  }
+  return line
+}
