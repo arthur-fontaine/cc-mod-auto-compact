@@ -2,6 +2,7 @@
 
     uv run python pipeline/evaluate.py --model runs/qwen3-1.7b/fused-8bit --name qwen3-1.7b-mlx
     uv run python pipeline/evaluate.py --endpoint http://127.0.0.1:8790/v1/systemone --name qwen3-1.7b
+    uv run python pipeline/evaluate.py --endpoint ... --warm --name qwen3-1.7b-warm   # latency after send
     uv run python pipeline/evaluate.py --mammoth --name mammoth          # its latency, one request at a time
     uv run python pipeline/evaluate.py --cloud decision-models/baseten-elephant-9b-latest --name elephant
     uv run python pipeline/alpha_report.py                               # the section 11 table
@@ -9,7 +10,9 @@
 Mammoth is the reference: top-1 agreement with its pick, KL to its distribution,
 calibration error, and the action agreement through policy.py. The precision of
 `independent` against the weak labels is reported for every row, Mammoth's included.
-Latency is end to end, one request at a time. Results go to results/NAME.json.
+Latency is end to end, one request at a time. With --warm, each state is first sent without
+its new message (untimed), as the mod prefills it while the user types, and only the full
+request is timed. Results go to results/NAME.json.
 """
 import argparse
 import json
@@ -46,6 +49,8 @@ def main():
     parser.add_argument("--mammoth", action="store_true", help="Re-ask Mammoth one request at a time for latency")
     parser.add_argument("--cloud", metavar="MODEL", help="Another model on the teacher's System One endpoint")
     parser.add_argument("--api-model", default="spisev-alpha", help="With --endpoint: the request's model")
+    parser.add_argument("--message-tokens", type=int, help="Clip each new message to this many (estimated) tokens")
+    parser.add_argument("--warm", action="store_true", help="With --endpoint: prefill each state without its message first")
     parser.add_argument("--name", required=True)
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int)
@@ -54,6 +59,12 @@ def main():
     load_env()
 
     rows = [json.loads(line) for line in (ROOT / "data" / "split" / f"{args.split}.jsonl").open()][: args.limit]
+    if args.message_tokens:
+        from text import clip
+        from task import MAX_MESSAGE_BYTES
+        for e in rows:
+            message = e["state"]["latest_user_message"]
+            e["state"] = {**e["state"], "latest_user_message": clip(message, MAX_MESSAGE_BYTES, args.message_tokens)}
     preds = []
     if args.model:
         from infer import Classifier
@@ -65,6 +76,8 @@ def main():
     elif args.endpoint:
         ask_endpoint(args.endpoint, rows[0]["state"], args.api_model)  # warm up
         for e in rows:
+            if args.warm:
+                ask_endpoint(args.endpoint, {**e["state"], "latest_user_message": ""}, args.api_model)
             started = time.perf_counter()
             try:
                 preds.append(ask_endpoint(args.endpoint, e["state"], args.api_model))
