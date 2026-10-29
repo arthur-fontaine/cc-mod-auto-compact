@@ -93,18 +93,22 @@ class V1:
 
 class V2:
     """The v2 state (PLAN.md section 2): batched memory through the last reply, and that reply raw."""
-    context = staticmethod(tree.memory_context)
-    needed = staticmethod(tree.needed_memory)
     clean = staticmethod(tree.clean_line_v2)
 
-    def __init__(self, limit):
-        self.limit = limit
+    def __init__(self, limit, low=tree.MEMORY_LOW, high=tree.MEMORY_HIGH):
+        self.limit, self.low, self.high = limit, low, high
+
+    def context(self, node):
+        return tree.memory_context(node, self.low, self.high)
+
+    def needed(self, views):
+        return tree.needed_memory(views, self.low, self.high)
 
     def lines(self, msgs, t):
         # The memory runs through the agent's last reply, whose line says what that turn did;
         # last_agent_message adds how the reply ended, word for word.
         last = msgs[t - 1] if t and msgs[t - 1]["kind"] == "agent" else None
-        return tree.memory_view(t), last
+        return tree.memory_view(t, self.low, self.high), last
 
     def state(self, memory, last, message):
         return clip_state_v2(memory, agent_reply(last), message)
@@ -241,11 +245,13 @@ def main():
     parser.add_argument("--format", choices=["v1", "v2"], default="v1")
     parser.add_argument("--limit", type=int, default=tree.MEMORY_LIMIT, help="v2: the line limit in bytes")
     parser.add_argument("--split", help="Only the points of this split")
+    parser.add_argument("--memory", type=int, nargs=2, metavar=("LOW", "HIGH"),
+                        default=(tree.MEMORY_LOW, tree.MEMORY_HIGH), help="v2: the memory's batch marks, in lines")
     args = parser.parse_args()
     load_env()
     fmt = V1()
     if args.format == "v2":
-        fmt = V2(args.limit)
+        fmt = V2(args.limit, *args.memory)
         summarizer.system_override = summarizer.system_prompt_v2(args.limit)
         if args.out == DATA / "states.jsonl":
             args.out = DATA / f"states-v2-{args.limit}.jsonl"
