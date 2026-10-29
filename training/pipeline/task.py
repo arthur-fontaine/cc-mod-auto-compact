@@ -141,12 +141,24 @@ CRITERIA_V2_RULES = {
                    "finished, committed or left a clean working tree does not make the next request unrelated.",
     "return": "Goes back to an earlier task of the memory, set aside since, rather than the recent work.",
 }
+# The tuning key showed "same project" read literally: in a one-app session, every new feature
+# of the app became related. "The same thing" is now defined, and related is a different part.
+CRITERIA_V2_RULES2 = {
+    **CRITERIA_V2_RULES,
+    "follow_up": "Builds on the task just done or in progress: a fix, refinement, test, extension or "
+                 "reorganization of the same thing (the app, program or module being worked on, even a part of it "
+                 "not touched yet) that needs its details, including one the agent did not offer.",
+    "related": "A goal about a different part of the project than the recent work (another component, tool or "
+               "deliverable in the same repo): it needs the general picture (repo, files, decisions), not the "
+               "details of the recent work.",
+}
 QUESTIONS_V2 = {
     "v2": {"type": "choice", "instructions": INSTRUCTIONS_V2, "criteria": dict(CRITERIA)},
     "rules": {"type": "choice", "criteria": CRITERIA_V2_RULES, "instructions": INSTRUCTIONS_V2 + (
         " Judge by what the new message asks for, not by how the agent's reply ended: an offer, a list of "
         "options or a wrap-up there does not decide the category.")},
 }
+QUESTIONS_V2["rules2"] = {**QUESTIONS_V2["rules"], "criteria": CRITERIA_V2_RULES2}
 
 
 def agent_reply(message):
