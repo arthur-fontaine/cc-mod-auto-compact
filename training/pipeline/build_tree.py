@@ -92,7 +92,7 @@ class V1:
 
 
 class V2:
-    """The v2 state (PLAN.md section 2): batched memory, the agent's last reply raw."""
+    """The v2 state (PLAN.md section 2): batched memory through the last reply, and that reply raw."""
     context = staticmethod(tree.memory_context)
     needed = staticmethod(tree.needed_memory)
     clean = staticmethod(tree.clean_line_v2)
@@ -101,8 +101,10 @@ class V2:
         self.limit = limit
 
     def lines(self, msgs, t):
+        # The memory runs through the agent's last reply, whose line says what that turn did;
+        # last_agent_message adds how the reply ended, word for word.
         last = msgs[t - 1] if t and msgs[t - 1]["kind"] == "agent" else None
-        return tree.memory_view(t - 1 if last else t), last
+        return tree.memory_view(t), last
 
     def state(self, memory, last, message):
         return clip_state_v2(memory, agent_reply(last), message)

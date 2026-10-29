@@ -63,10 +63,10 @@ class StateV2Test(unittest.TestCase):
         user = task.messages_v2(s)[1]["content"]
         self.assertTrue(user.rstrip("}\"").endswith(s["latest_user_message"][-20:]))
 
-    def test_v2_lines_leave_the_last_agent_message_out_of_memory(self):
+    def test_v2_memory_runs_through_the_last_reply_also_given_raw(self):
         msgs = [{"kind": "user", "text": "a"}, {"kind": "agent", "text": "agent: b"}]
         lines, last = build_tree.V2(160).lines(msgs, 2)
-        self.assertEqual(lines, [(0, 0)])
+        self.assertEqual(lines, [(0, 0), (0, 1)])
         self.assertEqual(last, msgs[1])
         msgs.append({"kind": "user", "text": "c"})
         lines, last = build_tree.V2(160).lines(msgs, 3)

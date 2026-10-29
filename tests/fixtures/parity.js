@@ -1666,7 +1666,7 @@ export const FIXTURES = {
    "questions": {
     "boundary": {
      "type": "choice",
-     "instructions": "memory is a coding session between a developer and an AI coding agent, as one-line summaries (id+n|summary: the n messages from id on), oldest first, that track its tasks and how each stands; \"=\" means the task of the line before. last_agent_message is the agent's latest reply, cut in the middle when long. latest_user_message is the developer's new message. How does it relate to the work in the conversation? The answer decides how much of the conversation the agent keeps in its context.",
+     "instructions": "memory is a coding session between a developer and an AI coding agent, as one-line summaries (id+n|summary: the n messages from id on), oldest first, through the agent's latest reply, that track its tasks and how each stands; \"=\" means the task of the line before. last_agent_message is that latest reply word for word, cut in the middle when long. latest_user_message is the developer's new message. How does it relate to the work in the conversation? The answer decides how much of the conversation the agent keeps in its context.",
      "criteria": {
       "continuation": "Carries on the current task directly: answers the agent, approves, corrects, or asks for the next step of the same work.",
       "follow_up": "Builds on the task just done or in progress: a fix, refinement, test or extension that needs its details.",

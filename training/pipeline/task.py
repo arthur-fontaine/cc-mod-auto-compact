@@ -112,10 +112,11 @@ def state_size(state):
 # server can have it cached before the developer sends.
 INSTRUCTIONS_V2 = (
     "memory is a coding session between a developer and an AI coding agent, as one-line summaries "
-    "(id+n|summary: the n messages from id on), oldest first, that track its tasks and how each stands; "
-    "\"=\" means the task of the line before. last_agent_message is the agent's latest reply, cut in the "
-    "middle when long. latest_user_message is the developer's new message. How does it relate to the work "
-    "in the conversation? The answer decides how much of the conversation the agent keeps in its context."
+    "(id+n|summary: the n messages from id on), oldest first, through the agent's latest reply, that track "
+    "its tasks and how each stands; \"=\" means the task of the line before. last_agent_message is that "
+    "latest reply word for word, cut in the middle when long. latest_user_message is the developer's new "
+    "message. How does it relate to the work in the conversation? The answer decides how much of the "
+    "conversation the agent keeps in its context."
 )
 MAX_MEMORY_BYTES = 4_000
 MAX_AGENT_MESSAGE_BYTES = 1_536
