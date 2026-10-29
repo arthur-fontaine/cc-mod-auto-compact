@@ -15,12 +15,15 @@ OUT = ROOT.parent / "docs" / "benchmark.svg"
 W, H = 760, 470
 LEFT, RIGHT, TOP, BOTTOM = 72, 28, 56, 64
 X_MIN, X_MAX = 100, 4000  # ms, log scale
-Y_MIN, Y_MAX = 70, 100  # % right action
+Y_MIN, Y_MAX = 80, 100  # % right action: the models sit within a few points, always keeping below
 # The zone to aim for: under the Doherty threshold (people stay engaged when a system answers
 # within 400 ms; Doherty and Thadani, IBM, 1982), and above the lowest score that beats always
 # keeping the context by more than chance on these points (benchmark.threshold).
 GOAL_MS = 400
-LABELS = {"spisev": "below", "qwen3.5-2b": "below", "elephant": "left", "spisev-previous": "below"}
+# Label offsets from each point (dx, dy, anchor): the points sit close, so each is placed by hand.
+LABELS = {"spisev": (0, 26, "middle"), "elephant": (0, 24, "middle"), "mammoth": (0, -20, "middle"),
+          "jev": (12, -8, "start"), "qwen3.5-2b": (12, 40, "start"), "spisev-previous": (0, -28, "middle"),
+          "kev-4b": (0, -13, "middle")}
 
 
 def results():
@@ -67,12 +70,12 @@ def svg():
     gx, gy = x(GOAL_MS), y(goal_pct)
     out.append(f'<rect x="{LEFT}" y="{TOP}" width="{gx - LEFT:.1f}" height="{gy - TOP:.1f}" class="zone" '
                'stroke-dasharray="4 3"/>')
-    out.append(f'<text x="{LEFT + 10}" y="{gy - 30:.1f}" class="goal" style="font-weight: 600">Where we want to be</text>')
-    out.append(f'<text x="{LEFT + 10}" y="{gy - 13:.1f}" class="goal" style="font-size: 12px">fast and accurate</text>')
-    # Both edges are explained under the zone: the Qwen3.5 point sits right on the latency edge.
-    out.append(f'<text x="{LEFT + 10}" y="{gy + 15:.1f}" class="goal" style="font-size: 11px">'
+    # The title and both edges sit inside the zone, at its foot: the points crowd its top.
+    out.append(f'<text x="{LEFT + 10}" y="{gy - 58:.1f}" class="goal" style="font-weight: 600">Where we want to be</text>')
+    out.append(f'<text x="{LEFT + 10}" y="{gy - 42:.1f}" class="goal" style="font-size: 12px">fast and accurate</text>')
+    out.append(f'<text x="{LEFT + 10}" y="{gy - 24:.1f}" class="goal" style="font-size: 11px">'
                f'≥ {goal_pct:.1f}%: beats always keeping, p &lt; 0.05</text>')
-    out.append(f'<text x="{LEFT + 10}" y="{gy + 29:.1f}" class="goal" style="font-size: 11px">'
+    out.append(f'<text x="{LEFT + 10}" y="{gy - 10:.1f}" class="goal" style="font-size: 11px">'
                f'&lt; {GOAL_MS} ms: the Doherty threshold</text>')
 
     for ms in (100, 200, 500, 1000, 2000):
@@ -83,10 +86,14 @@ def svg():
         out.append(f'<line class="grid" x1="{LEFT}" x2="{W - RIGHT}" y1="{y(pct):.1f}" y2="{y(pct):.1f}"/>')
         out.append(f'<text class="muted" x="{LEFT - 8}" y="{y(pct) + 4:.1f}" text-anchor="end">{pct}%</text>')
 
-    out.append(f'<line x1="{LEFT}" x2="{W - RIGHT}" y1="{y(keep_pct):.1f}" y2="{y(keep_pct):.1f}" '
-               'class="default" stroke-dasharray="6 4"/>')
-    out.append(f'<text class="muted" x="{W - RIGHT - 6}" y="{y(keep_pct) + 16:.1f}" text-anchor="end">'
-               f'always keep the context ({keep_pct:.1f}%)</text>')
+    if keep_pct >= Y_MIN:
+        out.append(f'<line x1="{LEFT}" x2="{W - RIGHT}" y1="{y(keep_pct):.1f}" y2="{y(keep_pct):.1f}" '
+                   'class="default" stroke-dasharray="6 4"/>')
+        out.append(f'<text class="muted" x="{W - RIGHT - 6}" y="{y(keep_pct) + 16:.1f}" text-anchor="end">'
+                   f'always keep the context ({keep_pct:.1f}%)</text>')
+    else:
+        out.append(f'<text class="muted" x="{W - RIGHT - 6}" y="{H - BOTTOM - 8}" text-anchor="end">'
+                   f'always keep the context: {keep_pct:.1f}%, below the chart ↓</text>')
 
     for r in rs:
         # A model measured on the v1 state (an earlier version): drawn hollow and faded, with a note.
@@ -105,10 +112,8 @@ def svg():
                        f'style="font-size: 11px">p95 {lat["p95"] / 1000:.1f} s →</text>')
         out.append(f'<circle class="{kind}" cx="{cx:.1f}" cy="{cy:.1f}" r="6" stroke-width="2.5"/>')
         label = r["label"].split(" (")[0] + (" (local)" if local else " (cloud)")
-        # Spisev, Elephant and Qwen3.5 sit within a point of each other: spread their labels.
-        place = LABELS.get(r["name"], "above")
-        lx, ly, anchor = {"above": (cx, cy - 12, "middle"), "below": (cx, cy + 24, "middle"),
-                          "left": (cx - 10, cy - 10, "end")}[place]
+        dx, dy, anchor = LABELS.get(r["name"], (0, -13, "middle"))
+        lx, ly = cx + dx, cy + dy
         out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" style="font-weight: 600">{label}</text>')
         if previous:
             out.append(f'<text x="{lx:.1f}" y="{ly + 14:.1f}" text-anchor="{anchor}" class="muted" '
