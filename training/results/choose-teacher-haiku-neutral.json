@@ -1,0 +1,44 @@
+{
+ "mammoth-v1-dev-new": {
+  "n": 254,
+  "right_action": 0.9488188976377953,
+  "kept_when_it_should": 0.9665271966527197,
+  "acted_when_it_should": 0.6666666666666666,
+  "right_action_applied": 0.9488188976377953,
+  "right_category": 0.85,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 292.7,
+   "p95": 581.8
+  }
+ },
+ "haiku-v1-dev": {
+  "n": 254,
+  "right_action": 0.8818897637795275,
+  "kept_when_it_should": 0.8870292887029289,
+  "acted_when_it_should": 0.8,
+  "right_action_applied": 0.889763779527559,
+  "right_category": 0.7545454545454545,
+  "errors": 0,
+  "timeouts": 15,
+  "latency_ms": {
+   "p50": 2677.906124969013,
+   "p95": 4125.633957912214
+  }
+ },
+ "haiku-v2-128-dev": {
+  "n": 254,
+  "right_action": 0.8661417322834646,
+  "kept_when_it_should": 0.8828451882845189,
+  "acted_when_it_should": 0.6,
+  "right_action_applied": 0.8700787401574803,
+  "right_category": 0.7090909090909091,
+  "errors": 0,
+  "timeouts": 17,
+  "latency_ms": {
+   "p50": 2574.7750410810113,
+   "p95": 4192.089291987941
+  }
+ }
+}

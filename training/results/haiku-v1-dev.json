@@ -1,0 +1,17 @@
+{
+ "name": "haiku-v1-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.7142857142857143,
+ "kl": 7.596245020399531,
+ "ece": 0.2857142857142857,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.8609022556390977,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 2713.4248330257833,
+  "p95": 4168.934833956882,
+  "max": 5760.582167073153
+ }
+}

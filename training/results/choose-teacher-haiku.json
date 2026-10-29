@@ -1,0 +1,44 @@
+{
+ "mammoth-v1-dev-new": {
+  "n": 249,
+  "right_action": 0.9518072289156626,
+  "kept_when_it_should": 0.9659574468085106,
+  "acted_when_it_should": 0.7142857142857143,
+  "right_action_applied": 0.9518072289156626,
+  "right_category": 0.8518518518518519,
+  "errors": 0,
+  "timeouts": 0,
+  "latency_ms": {
+   "p50": 291.5,
+   "p95": 579.3
+  }
+ },
+ "haiku-v1-dev": {
+  "n": 249,
+  "right_action": 0.8755020080321285,
+  "kept_when_it_should": 0.8808510638297873,
+  "acted_when_it_should": 0.7857142857142857,
+  "right_action_applied": 0.8835341365461847,
+  "right_category": 0.7638888888888888,
+  "errors": 0,
+  "timeouts": 15,
+  "latency_ms": {
+   "p50": 2680.7525829644874,
+   "p95": 4125.633957912214
+  }
+ },
+ "haiku-v2-128-dev": {
+  "n": 249,
+  "right_action": 0.8755020080321285,
+  "kept_when_it_should": 0.8936170212765957,
+  "acted_when_it_should": 0.5714285714285714,
+  "right_action_applied": 0.8795180722891566,
+  "right_category": 0.7268518518518519,
+  "errors": 0,
+  "timeouts": 18,
+  "latency_ms": {
+   "p50": 2548.8930420251563,
+   "p95": 4225.297875003889
+  }
+ }
+}
