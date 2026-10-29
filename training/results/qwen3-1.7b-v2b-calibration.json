@@ -1,0 +1,8 @@
+{
+ "temperature": 1.1,
+ "dev_soft_ce": 0.6804472804069519,
+ "dev_soft_ce_uncalibrated": 0.6834833025932312,
+ "ece_before": 0.12674152638231007,
+ "ece_after": 0.14797580992816983,
+ "n": 266
+}

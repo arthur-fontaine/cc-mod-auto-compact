@@ -1,0 +1,17 @@
+{
+ "name": "spisev-v2b-splices",
+ "split": "test-splices",
+ "n": 90,
+ "agreement": 0.8111111111111111,
+ "kl": 0.24742567458960715,
+ "ece": 0.07672162006354968,
+ "independent_precision": 1.0,
+ "independent_n": 61,
+ "action_agreement": 0.8111111111111111,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 502.2526249522343,
+  "p95": 892.8286250447854,
+  "max": 1634.5893749967217
+ }
+}

@@ -1,0 +1,53 @@
+{
+ "base": "unsloth/Qwen3-1.7B",
+ "best": {
+  "epoch": 3,
+  "step": 1356,
+  "dev_agreement": 0.8759398496240601,
+  "dev_soft_ce": 0.6833739111171966
+ },
+ "epochs": [
+  {
+   "epoch": 1,
+   "step": 452,
+   "dev_agreement": 0.8233082706766918,
+   "dev_soft_ce": 0.7478241586560538
+  },
+  {
+   "epoch": 2,
+   "step": 904,
+   "dev_agreement": 0.8458646616541353,
+   "dev_soft_ce": 0.699166879441267
+  },
+  {
+   "epoch": 3,
+   "step": 1356,
+   "dev_agreement": 0.8759398496240601,
+   "dev_soft_ce": 0.6833739111171966
+  }
+ ],
+ "targets": [
+  "down_proj",
+  "gate_proj",
+  "k_proj",
+  "o_proj",
+  "q_proj",
+  "up_proj",
+  "v_proj"
+ ],
+ "args": {
+  "base": "unsloth/Qwen3-1.7B",
+  "data": "/root/spisev/data",
+  "out": "/root/runs/qwen3-1.7b-v2b",
+  "epochs": "3.0",
+  "batch_size": "2",
+  "grad_accum": "4",
+  "lr": "0.0001",
+  "rank": "16",
+  "alpha": "32",
+  "max_len": "12288",
+  "save_steps": "50",
+  "targets": "None",
+  "hard_targets": "False"
+ }
+}

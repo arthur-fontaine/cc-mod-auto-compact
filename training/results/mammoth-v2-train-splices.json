@@ -1,0 +1,17 @@
+{
+ "name": "mammoth-v2-train-splices",
+ "split": "train-splices-v2",
+ "n": 471,
+ "agreement": 0.8301486199575372,
+ "kl": 0.17701533151999344,
+ "ece": 0.028887881579377696,
+ "independent_precision": 1.0,
+ "independent_n": 301,
+ "action_agreement": 0.8386411889596603,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 241.0,
+  "p95": 1178.1,
+  "max": 2264.4
+ }
+}

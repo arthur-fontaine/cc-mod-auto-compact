@@ -32,7 +32,7 @@ TIMEOUT_MS = 4000  # the mod's default: past it, it keeps the context
 # measured on the v1 state (trained on it, so not asked the v2 request) a note saying so.
 # Every other row got the v2 request (PLAN.md 2): memory, the agent's last reply, the new message.
 CONTENDERS = [
-    ("spisev", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "spisev-v2", "spisev-v2-splices", None),
+    ("spisev", "Spisev 1.7B", "Local · llama.cpp · Q8_0, 1.8 GB", "spisev-v2b", "spisev-v2b-splices", None),
     ("kev-4b", "Kev-4B (zero-shot)", "Local · llama.cpp · Q8_0, 4.5 GB", "kev-4b-v2", "kev-4b-v2-splices", None),
     ("elephant", "Elephant 9B", "Cloud · Baseten", "elephant-v2", "elephant-v2-splices", None),
     ("mammoth", "Mammoth 27B", "Cloud · Baseten", "mammoth-v2", "mammoth-v2-splices", None),

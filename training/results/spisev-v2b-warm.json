@@ -1,0 +1,17 @@
+{
+ "name": "spisev-v2b-warm",
+ "split": "test",
+ "n": 345,
+ "agreement": 0.8,
+ "kl": 0.18835582114889898,
+ "ece": 0.09854101139602321,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9507246376811594,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 44.123583007603884,
+  "p95": 284.8386660916731,
+  "max": 530.045917024836
+ }
+}
