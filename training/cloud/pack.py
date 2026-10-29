@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "pipeline"))
 from task import LETTERS, clip_any, prompt  # noqa: E402
 
 SPLIT = ROOT / "data" / "split"
-FILES = ("train_unsloth.py", "vm_packer.py", "soft_loss.py")
+FILES = ("train_unsloth.py", "vm_packer.py", "soft_loss.py", "setup_vm.py", "pod_run.sh")
 
 
 def encode(tokenizer, example):

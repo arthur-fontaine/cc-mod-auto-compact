@@ -5,6 +5,7 @@ The commands are Unsloth's own install cell from its Qwen3.5 Colab notebooks
 install when Unsloth already imports.
 """
 import importlib.util
+import os
 import subprocess
 import sys
 
@@ -41,6 +42,7 @@ else:
     sh("uv pip install --system transformers==5.2.0")
     # Unsloth bundles the gated delta net kernels; a leftover flash-linear-attention would shadow them.
     sh("uv pip uninstall --system -qqq flash-linear-attention fla-core || true")
-    sh("uv pip install --system --no-build-isolation causal_conv1d==1.6.0")
+    if not os.environ.get("SPISEV_QWEN3"):  # Qwen3.5's linear attention only
+        sh("uv pip install --system --no-build-isolation causal_conv1d==1.6.0")
     sh('uv pip install --system --no-deps --upgrade "torchao>=0.16.0"')
     print("installed" if installed() else "install finished but unsloth does not import", flush=True)
