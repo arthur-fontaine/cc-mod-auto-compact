@@ -8,6 +8,13 @@ import importlib.util
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+
+# Ubuntu 24.04 images mark the system Python as externally managed; the VM is throwaway.
+if Path(f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/EXTERNALLY-MANAGED").exists():
+    os.environ["UV_BREAK_SYSTEM_PACKAGES"] = "1"
+    os.environ["PIP_BREAK_SYSTEM_PACKAGES"] = "1"
 
 
 def sh(cmd):
