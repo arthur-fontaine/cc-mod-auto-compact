@@ -100,16 +100,23 @@ Pick the format on dev, never on test:
 - Estimate cost first, `--dry-run`, stop above MAX_SPEND_USD, 6b limit rules apply.
 - Gate: the chosen variant is at least as accurate as v1 for Mammoth on the dev key (right
   action and category). If none is, stop and report: v2 is not worth retraining.
+- Gate as replaced with Arthur's go on 2026-10-29: on the tuning key (`tune_split.py`, 917
+  train points, Sonnet on the neutral view), the chosen teacher with the chosen format is not
+  worse than Mammoth v1 in right action (McNemar) and in AUC keep against act (paired
+  bootstrap), and the dev keys agree. Met by Jev with v2-128 and the original v2 question;
+  Jev replaces Mammoth as the teacher from phase 4 on (see the log).
 
 ## 4. Rebuild, relabel, retrain
 
-- Rebuild the tree with prompt v2 on every session (Haiku on the subscription; estimate,
-  cache, usage-limit rules), relabel with Mammoth, rebuild splits with the same session split.
-- Retrain Qwen3-1.7B with the v1 recipe, best epoch on dev, calibrate, `import_adapter.py`
-  dev check, export GGUF Q8_0.
+- Rebuild the tree with prompt v2 (128-byte lines) on the train and dev sessions (Haiku on
+  the subscription; estimate, cache, usage-limit rules), label with Jev (`jev-1.13` on
+  OpenCode Zen; the free variant rate-limits), build the splits with the same session split.
+- Retrain Qwen3-1.7B with the v1 recipe on a RunPod GPU, under $1 of pod time, the pod
+  deleted when the run ends; best epoch on dev, `import_adapter.py` dev check, calibrate,
+  export GGUF Q8_0.
 - Check `df -h` before; tell Arthur the size if over ~1 GB; delete intermediate checkpoints
   and merged weights once the GGUF is verified.
-- Gate: dev agreement with Mammoth ≥ v1's.
+- Gate: dev agreement with the teacher ≥ v1's with Mammoth (86.1% in training, 85.7% merged).
 
 ## 5. Evaluate and ship
 
