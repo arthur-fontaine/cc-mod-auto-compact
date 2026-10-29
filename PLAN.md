@@ -25,8 +25,8 @@ What v1 does instead (measured 2026-10-29 on the 345 test states, Spisev tokeniz
   18% on the slowest tenth (one merge per message rewrites the view), and nothing is
   prefilled before the user sends.
 - In the live tree of a session: the task header repeats on every line, statuses never leave
-  `in-progress`, the agent's corrected guesses stay as facts, languages mix, tool calls fill
-  the 32 lines.
+  `in-progress`, the agent's corrected guesses stay as facts, languages mix. (Tool calls do
+  not fill lines: `text.messages` already folds them into the agent's turn.)
 
 ## Targets
 
@@ -79,7 +79,7 @@ Memory (prompts/compact.md v2, `tree`, `view`):
 - By value: the user's words and decisions, the outcome of each exchange (proposed /
   accepted / refused / corrected), task changes; drop numbers, tool steps and the agent's
   guesses, keep corrections over what they correct.
-- Tool calls and results fold into the agent turn they belong to; they are not lines.
+- Tool calls stay folded into the agent turn they belong to, as v1 already does.
 - Merge in batches on a byte budget, as UniiChat does (grow to a high mark, merge back to a
   low mark), so the memory changes only at its end between batches. Marks set so state
   stays under ~1,000 tokens (memory ≤ ~600).
