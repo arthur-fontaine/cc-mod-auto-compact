@@ -13,20 +13,6 @@
    "p95": 486.8
   }
  },
- "mammoth-v2-128-tune": {
-  "n": 917,
-  "right_action": 0.8593238822246456,
-  "kept_when_it_should": 0.9094594594594595,
-  "acted_when_it_should": 0.6497175141242938,
-  "right_action_applied": 0.8756815703380589,
-  "right_category": 0.6957470010905126,
-  "errors": 0,
-  "timeouts": 0,
-  "latency_ms": {
-   "p50": 239.2,
-   "p95": 1260.2
-  }
- },
  "mammoth-v2-128-rules-tune": {
   "n": 917,
   "right_action": 0.8745910577971646,
@@ -53,6 +39,20 @@
   "latency_ms": {
    "p50": 245.8,
    "p95": 1261.2
+  }
+ },
+ "mammoth-v2-128-rules3-tune": {
+  "n": 917,
+  "right_action": 0.8593238822246456,
+  "kept_when_it_should": 0.8945945945945946,
+  "acted_when_it_should": 0.711864406779661,
+  "right_action_applied": 0.8735005452562704,
+  "right_category": 0.7033805888767721,
+  "errors": 0,
+  "timeouts": 4,
+  "latency_ms": {
+   "p50": 423.5,
+   "p95": 1660.3
   }
  }
 }
