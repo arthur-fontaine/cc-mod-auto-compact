@@ -50,6 +50,15 @@ For each item you get what the classifier sees (`summary`: one-line summaries of
 
 `confidence` is your probability that the category is right (0 to 1). Keep `reason` under 20 words."""
 
+# A key that no state format wrote: the teachers see no summary line, only the raw messages, so the
+# key cannot favour the format whose lines they read (PLAN.md 3).
+SYSTEM_NEUTRAL = SYSTEM.replace(
+    "For each item you get what the classifier sees (`summary`: one-line summaries of the conversation, oldest "
+    "first; `message`: the new message) and hindsight it cannot see: `recent`, the last messages before the new "
+    "one in full;",
+    "For each item you get `message`, the new message, and `recent`, the conversation's last messages before it "
+    "in full, oldest first (`earlier` says how many older messages there were), plus hindsight:")
+
 SCHEMA = {
     "type": "object",
     "properties": {"labels": {"type": "array", "items": {
@@ -61,13 +70,13 @@ SCHEMA = {
 }
 
 
-def paths(split):
+def paths(split, neutral=False):
     """The labels and gold files of a split: the test key keeps its names; dev's say dev."""
-    tag = "" if split == "test" else f"-{split}"
+    tag = ("" if split == "test" else f"-{split}") + ("-neutral" if neutral else "")
     return Path(str(OUT).replace("hindsight-", f"hindsight{tag}-")), GOLD.with_name(f"hindsight{tag}-gold.jsonl")
 
 
-def items(splices=False, split="test"):
+def items(splices=False, split="test", neutral=False):
     """Held-out test prompts, or with `splices` the held-out splices (pipeline/heldout_splices.py),
     or the prompts of another split."""
     suffix = "-test-splices" if splices else ""
@@ -89,10 +98,13 @@ def items(splices=False, split="test"):
         own = messages(sessions[p["session_key"]]["rows"])
         # A splice's prompt opens the other session: what followed it is there.
         after = own[t + 1:] if p["context_key"] == p["session_key"] else own[1:]
-        out.append({
-            "id": p["id"],
-            "summary": clip(states[p["id"]]["conversation"], 8000),
-            "recent": [clip(render(m), 1200) for m in before[-8:]],
+        if neutral:
+            out.append({"id": p["id"], "earlier": max(0, len(before) - 12),
+                        "recent": [clip(render(m), 1200) for m in before[-12:]]})
+        else:
+            out.append({"id": p["id"], "summary": clip(states[p["id"]]["conversation"], 8000),
+                        "recent": [clip(render(m), 1200) for m in before[-8:]]})
+        out[-1].update({
             "message": clip(p["message"], 4000),
             "next_turn": clip(render(after[0]), 2500) if after and after[0]["kind"] == "agent" else None,
             "next_prompts": [clip(m["text"], 400) for m in after if m["kind"] == "user"][:3],
@@ -109,13 +121,13 @@ def env():
     return e
 
 
-def call(teacher, batch):
+def call(teacher, batch, system=SYSTEM):
     prompt = f"Label these {len(batch)} items. Return one label per id.\n\n" + json.dumps(batch, ensure_ascii=False, indent=1)
     with tempfile.TemporaryDirectory() as cwd:
         done = subprocess.run(
             ["claude", "-p", "--model", teacher, "--safe-mode", "--setting-sources", "", "--strict-mcp-config",
              "--mcp-config", '{"mcpServers":{}}', "--disable-slash-commands", "--no-session-persistence",
-             "--tools", "", "--output-format", "json", "--system-prompt", SYSTEM, "--json-schema", json.dumps(SCHEMA)],
+             "--tools", "", "--output-format", "json", "--system-prompt", system, "--json-schema", json.dumps(SCHEMA)],
             input=prompt, capture_output=True, text=True, cwd=cwd, timeout=900, env=env())
     if done.returncode != 0:
         raise RuntimeError((done.stderr or done.stdout)[-400:])
@@ -124,10 +136,10 @@ def call(teacher, batch):
     return result["labels"], out.get("total_cost_usd") or 0.0
 
 
-def label(teacher, dry_run, splices=False, split="test"):
-    path = Path(str(paths(split)[0]).format(teacher=teacher))
+def label(teacher, dry_run, splices=False, split="test", neutral=False):
+    path = Path(str(paths(split, neutral)[0]).format(teacher=teacher))
     done = {json.loads(line)["id"] for line in path.open()} if path.exists() else set()
-    todo = [i for i in items(splices, split) if i["id"] not in done]
+    todo = [i for i in items(splices, split, neutral) if i["id"] not in done]
     batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
     print(f"[{teacher}] {len(done)} labeled, {len(todo)} to go in {len(batches)} calls (subscription)", flush=True)
     if not guard_spend(teacher, calls=len(batches), billed_usd=0.0, list_usd=None, dry_run=dry_run):
@@ -138,7 +150,7 @@ def label(teacher, dry_run, splices=False, split="test"):
         ids = {b["id"] for b in batch}
         for _ in range(3):
             try:
-                labels, usd = call(teacher, batch)
+                labels, usd = call(teacher, batch, SYSTEM_NEUTRAL if neutral else SYSTEM)
                 good = [lab for lab in labels if lab["id"] in ids and lab["category"] in CATEGORIES]
                 with lock, path.open("a") as f:
                     for lab in good:
@@ -157,8 +169,8 @@ def label(teacher, dry_run, splices=False, split="test"):
           f"billed $0.00 (subscription)", flush=True)
 
 
-def gold(teachers, split="test"):
-    out, gold_path = paths(split)
+def gold(teachers, split="test", neutral=False):
+    out, gold_path = paths(split, neutral)
     read = lambda t: {lab["id"]: lab for lab in map(json.loads, Path(str(out).format(teacher=t)).open())}
     a, b = (read(t) for t in teachers)
     both = sorted(set(a) & set(b))
@@ -182,13 +194,14 @@ def main():
     parser.add_argument("--gold", action="store_true")
     parser.add_argument("--splices", action="store_true", help="Label the held-out splices instead")
     parser.add_argument("--split", default="test", choices=["test", "dev"])
+    parser.add_argument("--neutral", action="store_true", help="Teachers see raw messages, no summary line")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     load_env()
     if args.gold:
-        gold(["claude-sonnet-5-5", "claude-opus-5-5"], args.split)
+        gold(["claude-sonnet-5-5", "claude-opus-5-5"], args.split, args.neutral)
     else:
-        label(args.teacher, args.dry_run, args.splices, args.split)
+        label(args.teacher, args.dry_run, args.splices, args.split, args.neutral)
 
 
 if __name__ == "__main__":
