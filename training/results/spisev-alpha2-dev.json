@@ -1,0 +1,17 @@
+{
+ "name": "spisev-alpha2-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8082706766917294,
+ "kl": 0.23255294774304466,
+ "ece": 0.08323107355514867,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9135338345864662,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 368.46124997828156,
+  "p95": 695.320583996363,
+  "max": 969.8495829943568
+ }
+}
