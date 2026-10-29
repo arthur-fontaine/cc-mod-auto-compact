@@ -126,8 +126,15 @@ def agent_reply(message):
     """What the agent said in a tree message, without its tool lines (the memory has the work)."""
     if not message or message["kind"] != "agent":
         return ""
-    said = [line[len("agent: "):] if line.startswith("agent: ") else line
-            for line in message["text"].split("\n") if not line.startswith("tool: ")]
+    # Parts start with "agent: " or "tool: "; a part's later lines (a multi-line tool input) have no prefix.
+    said, prose = [], True
+    for line in message["text"].split("\n"):
+        if line.startswith("agent: "):
+            prose, line = True, line[len("agent: "):]
+        elif line.startswith("tool: "):
+            prose = False
+        if prose:
+            said.append(line)
     return "\n".join(said).strip()
 
 

@@ -48,6 +48,8 @@ class StateV2Test(unittest.TestCase):
     def test_agent_reply_drops_tool_lines(self):
         m = {"kind": "agent", "text": "agent: I'll read it.\ntool: Read {}\nagent: Done. Commit?\nsecond line"}
         self.assertEqual(task.agent_reply(m), "I'll read it.\nDone. Commit?\nsecond line")
+        m = {"kind": "agent", "text": 'agent: Editing.\ntool: Edit {"new":"a\nb"}\n  continued input\nagent: Done.'}
+        self.assertEqual(task.agent_reply(m), "Editing.\nDone.")
         self.assertEqual(task.agent_reply({"kind": "user", "text": "hi"}), "")
         self.assertEqual(task.agent_reply(None), "")
 
