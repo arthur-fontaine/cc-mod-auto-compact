@@ -1,0 +1,17 @@
+{
+ "name": "jev-v1-tune",
+ "split": "tune",
+ "n": 918,
+ "agreement": 0.8159041394335512,
+ "kl": 0.4779481749124223,
+ "ece": 0.09050108932461878,
+ "independent_precision": 1.0,
+ "independent_n": 67,
+ "action_agreement": 0.9422657952069716,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 435.0,
+  "p95": 585.2,
+  "max": 1058.4
+ }
+}

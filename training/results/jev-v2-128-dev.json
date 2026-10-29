@@ -1,0 +1,17 @@
+{
+ "name": "jev-v2-128-dev",
+ "split": "dev",
+ "n": 266,
+ "agreement": 0.8157894736842105,
+ "kl": 0.6229291799161977,
+ "ece": 0.0613157894736842,
+ "independent_precision": null,
+ "independent_n": 0,
+ "action_agreement": 0.9022556390977443,
+ "errors": 0,
+ "latency_ms": {
+  "p50": 567.8,
+  "p95": 959.7,
+  "max": 5456.1
+ }
+}
